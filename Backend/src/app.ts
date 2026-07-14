@@ -2,6 +2,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import authRouter from "./routes/auth.router.js";
 import userRouter from "./routes/user.router.js";
 
 export function createApp() {
@@ -21,7 +22,9 @@ export function createApp() {
   app.use(express.static("public"));
   app.use(cookieParser());
 
-  app.use("/api/v1/users", userRouter);
+  app.use("/api/v1", authRouter);
+  app.use("/api/v1",userRouter)
+  
 
   return app;
 }
