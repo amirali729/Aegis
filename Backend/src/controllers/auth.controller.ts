@@ -1,4 +1,3 @@
-
 import { IUser, User } from "../models/user.model.js";  
 import { generateUserAccessAndRefreshToken } from "./token.controller.js";
 import type  { Request,Response} from 'express';
@@ -6,7 +5,7 @@ import type  { Request,Response} from 'express';
 
 
 
-const signupUser = async (req:Request, res:Response) => {
+const signUp = async (req:Request, res:Response) => {
     try {
         const { username, password, email } = req.body
 
@@ -69,7 +68,7 @@ const signupUser = async (req:Request, res:Response) => {
     }
 }
 
-const loginUser = async (req:Request, res:Response) => {
+const login = async (req:Request, res:Response) => {
     try {
         const { username, password } = req.body
 
@@ -180,19 +179,19 @@ const changedPassword = async (req: Request, res: Response) => {
 };
 
 
-const userProfile = async (req:Request ,res:Response) => {
-    const user = req.user as IUser;
-    if (!user) {
-        return res.status(401).json({
-            message: "Unauthorized"
-        })
-    }
-    return res.status(201).json({
-        user,
-        message: "User profile fetched successfully"
-    })
-}
-const logoutUser = async (req:Request,res:Response) => {
+// const userProfile = async (req:Request ,res:Response) => {
+//     const user = req.user as IUser;
+//     if (!user) {
+//         return res.status(401).json({
+//             message: "Unauthorized"
+//         })
+//     }
+//     return res.status(201).json({
+//         user,
+//         message: "User profile fetched successfully"
+//     })
+// }
+const logout = async (req:Request,res:Response) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
@@ -216,4 +215,4 @@ const logoutUser = async (req:Request,res:Response) => {
         .json({message: "you have been logout"})
 }
 
-export { signupUser,loginUser,changedPassword,userProfile,logoutUser }
+export { signUp,login,changedPassword,logout }
