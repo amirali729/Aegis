@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken"
-import { IUser, User } from "../shared/database/user.model.js";
+import { IUser, User } from "../models/user.model.js";
 import type  {Request,Response} from 'express';
 import type { JwtPayloadWithId } from "../types/jwtPayload.js";
 

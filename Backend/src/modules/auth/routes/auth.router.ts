@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { signUp, login, changedPassword, logout } from "../controllers/auth.controller.js";
-import { verifyjwt } from "../shared/security/middleware/verifyJwt.middleware.js";
+import { verifyjwt } from "../middleware/verifyJwt.middleware.js";
 import { logoutAll, refreshAccessToken } from "../controllers/token.controller.js";
 import { SIGNUP,LOGIN,LOGOUT,LOGOUT_ALL,REFRESH,RESET_PASSWORD } from "../types/api-endpoint/auth.api.endpoint.js";
 

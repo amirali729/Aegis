@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 dotenv.config({
     path : './.env'
 })
-import dbConnection from './db/dbconnection.js'
+import dbConnection from './shared/database/dbconnection.js'
 import { createApp } from "./app.js";
 
 
