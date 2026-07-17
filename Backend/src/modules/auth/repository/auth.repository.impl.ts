@@ -1,4 +1,4 @@
-import { IUser } from "../../../shared/database/user.model.js";
+import { IUser } from "../models/user.model.js";
 import { CreateUserDto } from "../dto/login.dto.js";
 import { IUserRepository } from "./interface/auth.repository.interface.js";
 

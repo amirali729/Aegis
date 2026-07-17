@@ -1,5 +1,5 @@
 import { IAuthController } from "./interface/auth.controller.interface.js";
-import { IUser, User } from "../../../shared/database/user.model.js";  
+import { IUser, User } from "../models/user.model.js";  
 import { generateUserAccessAndRefreshToken } from "./token.controller.impl.js";
 import type  { Request,Response} from 'express';
 
