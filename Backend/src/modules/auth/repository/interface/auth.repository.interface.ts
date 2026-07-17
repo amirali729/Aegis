@@ -1,5 +1,5 @@
 import { IUser } from "../../../../shared/database/user.model.js";
-import {CreateUserDto} from "../../dto/auth.dto.js";
+import {CreateUserDto} from "../../dto/login.dto.js";
 export interface IUserRepository {
     create(user: CreateUserDto): Promise<IUser>;
     findById(id: string): Promise<IUser | null>;

@@ -1,5 +1,5 @@
 import { IUser } from "../../../shared/database/user.model.js";
-import { CreateUserDto } from "../dto/auth.dto.js";
+import { CreateUserDto } from "../dto/login.dto.js";
 import { IUserRepository } from "./interface/auth.repository.interface.js";
 
 export class userRepository implements IUserRepository {
