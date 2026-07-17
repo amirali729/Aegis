@@ -1,6 +1,6 @@
-import { BaseErrorResponse } from "../response/base.error.response.js";
+import { BaseErrorResponse } from "../../../shared/response/base.error.response.js";
 
-import type { AuthError } from "../../modules/auth/types/auth.types.js";
+import type { AuthError } from "../types/auth.types.js";
 
 const errorMap: Record<
   AuthError["kind"],

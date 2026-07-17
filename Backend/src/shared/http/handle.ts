@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { BaseResponse } from "../response/base.response.js";
-import { mapAuthError } from "./map-auth-error.js";
+import { mapAuthError } from "../../modules/auth/http/map-auth-error.js";
 import type { Result } from "../result/result.js";
 import type { ErrorShape } from "../errors/error.shape.js";
 
