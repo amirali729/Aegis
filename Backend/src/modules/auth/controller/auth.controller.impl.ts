@@ -1,4 +1,4 @@
-import { IAuthController } from "../../../domain/auth/controller/auth.controller.interface.js";
+import { IAuthController } from "./interface/auth.controller.interface.js";
 import { IUser, User } from "../../../shared/database/user.model.js";  
 import { generateUserAccessAndRefreshToken } from "./token.controller.impl.js";
 import type  { Request,Response} from 'express';
@@ -219,6 +219,9 @@ const logout = async (req:Request,res:Response) => {
 
 
 // class AuthController implements IAuthController {
+    //     constructor(
+    //     private readonly userRepository: IUserRepository
+    // ) {}
 //     const signUp = async (req:Request, res:Response) => {
 //     try {
 //         const { username, password, email } = req.body
@@ -430,4 +433,5 @@ const logout = async (req:Request,res:Response) => {
 //         .json({message: "you have been logout"})
 // }
 // }
+// export const authController = new AuthController();
 export { signUp,login,changedPassword,logout }
