@@ -1,45 +1,38 @@
 import { BaseErrorResponse } from "../response/base.error.response.js";
-import { ConflictError } from "../errors/conflict.error.js";
-import { InfrastructureError } from "../errors/infrastructure.error.js";
-import { NotFoundError } from "../errors/not-found.error.js";
-import { UnauthorizedError } from "../errors/unauthorized.error.js";
-import { ValidationError } from "../errors/validation.error.js";
-import type { ErrorShape } from "../errors/error.shape.js";
 
-type AuthError =
-  | ValidationError
-  | UnauthorizedError
-  | ConflictError
-  | NotFoundError
-  | InfrastructureError;
+import type { AuthError } from "../../modules/auth/types/auth.types.js";
 
 const errorMap: Record<
   AuthError["kind"],
   (error: AuthError) => BaseErrorResponse
 > = {
-  validation_error: (error) =>
-    new BaseErrorResponse(error.message, 400),
-
-  unauthorized: (error) =>
-    new BaseErrorResponse(error.message, 401),
-
-  conflict: (error) =>
+  email_already_exists: (error) =>
     new BaseErrorResponse(error.message, 409),
 
-  not_found: (error) =>
+  username_already_exists: (error) =>
+    new BaseErrorResponse(error.message, 409),
+
+  invalid_password: (error) =>
+    new BaseErrorResponse(error.message, 401),
+
+  user_not_found: (error) =>
     new BaseErrorResponse(error.message, 404),
+
+  invalid_token: (error) =>
+    new BaseErrorResponse(error.message, 401),
+
+  refresh_token_expired: (error) =>
+    new BaseErrorResponse(error.message, 401),
+
+  validation_error: (error) =>
+    new BaseErrorResponse(error.message, 400),
 
   infrastructure: (error) =>
     new BaseErrorResponse(error.message, 500),
 };
 
 export function mapAuthError(
-  error: ErrorShape
+  error: AuthError
 ): BaseErrorResponse {
-
-  return errorMap[
-    error.kind as AuthError["kind"]
-  ](
-    error as AuthError
-  );
+  return errorMap[error.kind](error);
 }
