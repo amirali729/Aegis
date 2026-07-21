@@ -1,18 +1,56 @@
 import { Router } from "express";
-import { signUp, login, changedPassword, logout } from "../controllers/auth.controller.js";
-import { verifyjwt } from "../middleware/verifyJwt.middleware.js";
-import { logoutAll, refreshAccessToken } from "../controllers/token.controller.js";
-import { SIGNUP,LOGIN,LOGOUT,LOGOUT_ALL,REFRESH,RESET_PASSWORD } from "../types/api-endpoint/auth.api.endpoint.js";
+import { handle } from "../../../shared/http/handle.js";
+import {
+  LOGIN,
+  LOGOUT,
+  LOGOUT_ALL,
+  REFRESH,
+  RESET_PASSWORD,
+  SIGNUP,
+} from "../../../shared/types/api-endpoint/auth.api.endpoint.js";
+import { AuthRepository } from "../repository/auth.repository.impl.js";
+import { AuthController } from "../controller/auth.controller.impl.js";
+import { verifyjwt } from "../../../shared/security/middleware/verifyJwt.middleware.js";
+
+const router = Router();
+
+const authRepository = new AuthRepository();
+
+const authController = new AuthController(authRepository);
+
+router.post(
+  SIGNUP,
+  handle(authController.signUp.bind(authController))
+);
+
+router.post(
+  LOGIN,
+  handle(authController.login.bind(authController))
+);
+
+router.post(
+  RESET_PASSWORD,
+  verifyjwt,
+  handle(authController.changePassword.bind(authController))
+);
 
 
-const router = Router()
+// These can stay as they are for now
+router.post(
+  REFRESH,
+  verifyjwt,
+  refreshAccessToken
+);
 
-router.route(`${SIGNUP}`).post(signUp)
-router.route(`${LOGIN}`).post(login)
-router.route(`${LOGOUT}`).post(verifyjwt,logout)
-router.route(`${RESET_PASSWORD}`).post(verifyjwt,changedPassword)
-router.route(`${REFRESH}`).post(verifyjwt,refreshAccessToken)
-router.route(`${LOGOUT_ALL}`).post(verifyjwt,logoutAll)
+router.post(
+  LOGOUT_ALL,
+  verifyjwt,
+  handle(authController.logoutAll.bind(authController))
+);
+router.post(
+  LOGOUT,
+  verifyjwt,
+  handle(authController.logout.bind(authController))
+);
 
-
-export default router
+export default router;
