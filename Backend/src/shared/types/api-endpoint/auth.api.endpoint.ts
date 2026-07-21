@@ -1,3 +1,17 @@
+// | Endpoint                          | Verify JWT  | Priority     |
+// | --------------------------------- | ----------  | --------     |
+// | `GET /me`                         | ✅          | ⭐⭐⭐⭐⭐   |
+// | `PATCH /me`                       | ✅          | ⭐⭐⭐⭐     |
+// | `POST /verify-email`              | ❌          | ⭐⭐⭐⭐     |
+// | `POST /resend-verification-email` | ❌          | ⭐⭐⭐⭐     |
+// | `POST /forgot-password`           | ❌          | ⭐⭐⭐⭐⭐   |
+// | `POST /reset-password`            | ❌          | ⭐⭐⭐⭐⭐   |
+// | `DELETE /me`                      | ✅          | ⭐⭐⭐       |
+// | `POST /change-email`              | ✅          | ⭐⭐⭐       |
+
+
+
+
 const AuthApiEndpoint = {
     SIGNUP: '/auth/signup',
     LOGIN: '/auth/login',

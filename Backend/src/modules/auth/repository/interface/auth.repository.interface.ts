@@ -25,4 +25,6 @@ export interface IAuthRepository {
   refreshAccessToken(
   refreshToken: string
 ): Promise<RefreshTokenResult>;
+
+logoutAll(userId: string): Promise<LogoutResult>
 }

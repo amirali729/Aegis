@@ -4,5 +4,6 @@ export interface IAuthController {
     login(req:Request,res:Response):Promise<void>;
     logout(req:Request,res:Response):Promise<void>;
     readonly changedPassword:(req:Request,res:Response)=>Promise<void>;
+    logoutAll(req:Request,res:Response):Promise<void>
     
 }

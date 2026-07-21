@@ -1,5 +1,4 @@
 import { InfrastructureError } from "../../../shared/errors/infrastructure.error.js";
-import { ValidationError } from "../../../shared/errors/validation.error.js";
 import { err, ok } from "../../../shared/result/result.js";
 import { ChangePasswordDto } from "../dto/change-password.dto.js";
 import { LoginDto } from "../dto/login.dto.js";
@@ -160,32 +159,22 @@ async login(
         }
 
         return ok(
-
             new LoginResponse(
-
                 loginUser,
-
                 accessToken,
-
                 refreshToken
-
             )
-
         );
-
     }
 
     catch{
-
         return err(
-
             new InfrastructureError()
-
         );
-
     }
 
 }
+
 async changePassword(
   userId: string,
   dto: ChangePasswordDto
@@ -297,5 +286,44 @@ async refreshAccessToken(
       new InfrastructureError()
     );
   }
+}
+
+async logoutAll(
+    userId: string
+): Promise<LogoutResult> {
+
+    try {
+
+        const user =
+            await User.findById(userId);
+
+        if (!user) {
+            return err(
+                new UserNotFoundError()
+            );
+        }
+
+        user.tokenVersion++;
+
+        user.refreshToken = undefined;
+
+        await user.save({
+            validateBeforeSave:false
+        });
+
+        return ok(
+            new LogoutResponse(
+                "Logged out from all devices."
+            )
+        );
+
+    } catch {
+
+        return err(
+            new InfrastructureError()
+        );
+
+    }
+
 }
 }

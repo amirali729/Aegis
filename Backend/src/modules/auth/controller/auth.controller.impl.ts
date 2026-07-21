@@ -160,4 +160,33 @@ async refreshAccessToken(
 
   return result;
 }
+
+async logoutAll(
+    req:Request,
+    res:Response,
+    _next:NextFunction
+){
+
+    const result =
+        await this.repository.logoutAll(
+            req.user._id.toString()
+        );
+
+    if(!result.ok){
+        return result;
+    }
+
+    res.clearCookie(
+        "accessToken",
+        COOKIE_OPTIONS
+    );
+
+    res.clearCookie(
+        "refreshToken",
+        COOKIE_OPTIONS
+    );
+
+    return result;
+
+}
 }
