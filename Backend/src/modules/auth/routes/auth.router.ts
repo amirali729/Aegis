@@ -1,18 +1,58 @@
 import { Router } from "express";
-import { signUp, login, changedPassword, logout } from "../controllers/auth.controller.js";
-import { verifyjwt } from "../middleware/verifyJwt.middleware.js";
-import { logoutAll, refreshAccessToken } from "../controllers/token.controller.js";
-import { SIGNUP,LOGIN,LOGOUT,LOGOUT_ALL,REFRESH,RESET_PASSWORD } from "../types/api-endpoint/auth.api.endpoint.js";
 
+import { AuthRepository } from "../repository/auth.repository.impl.js";
+import { AuthController } from "../controller/auth.controller.impl.js";
 
-const router = Router()
+import { handle } from "../../../shared/http/handle.js";
+import { verifyjwt } from "../../../shared/security/middleware/verifyJwt.middleware.js";
 
-router.route(`${SIGNUP}`).post(signUp)
-router.route(`${LOGIN}`).post(login)
-router.route(`${LOGOUT}`).post(verifyjwt,logout)
-router.route(`${RESET_PASSWORD}`).post(verifyjwt,changedPassword)
-router.route(`${REFRESH}`).post(verifyjwt,refreshAccessToken)
-router.route(`${LOGOUT_ALL}`).post(verifyjwt,logoutAll)
+import {
+  SIGNUP,
+  LOGIN,
+  REFRESH,
+  LOGOUT,
+  LOGOUT_ALL,
+  RESET_PASSWORD,
+} from "../../../shared/types/api-endpoint/auth.api.endpoint.js";
 
+const router = Router();
 
-export default router
+const authRepository = new AuthRepository();
+const authController = new AuthController(authRepository);
+
+// Public
+router.post(
+  SIGNUP,
+  handle(authController.signUp.bind(authController))
+);
+
+router.post(
+  LOGIN,
+  handle(authController.login.bind(authController))
+);
+
+router.post(
+  REFRESH,
+  handle(authController.refreshAccessToken.bind(authController))
+);
+
+// Protected
+router.post(
+  LOGOUT,
+  verifyjwt,
+  handle(authController.logout.bind(authController))
+);
+
+router.post(
+  LOGOUT_ALL,
+  verifyjwt,
+  handle(authController.logoutAll.bind(authController))
+);
+
+router.post(
+  RESET_PASSWORD,
+  verifyjwt,
+  handle(authController.changePassword.bind(authController))
+);
+
+export default router;

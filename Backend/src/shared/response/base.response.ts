@@ -9,8 +9,8 @@ export class BaseResponse<T> {
 
   constructor(
     data: T,
+    statusCode = 200,
     message = "Request completed successfully.",
-    statusCode = 200
   ) {
     this.success = true;
     this.statusCode = statusCode;
