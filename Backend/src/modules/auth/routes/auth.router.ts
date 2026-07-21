@@ -1,14 +1,17 @@
 import { Router } from "express";
+
 import { AuthRepository } from "../repository/auth.repository.impl.js";
 import { AuthController } from "../controller/auth.controller.impl.js";
-import { verifyjwt } from "../../../shared/security/middleware/verifyJwt.middleware.js";
+
 import { handle } from "../../../shared/http/handle.js";
+import { verifyjwt } from "../../../shared/security/middleware/verifyJwt.middleware.js";
+
 import {
   SIGNUP,
   LOGIN,
+  REFRESH,
   LOGOUT,
   LOGOUT_ALL,
-  REFRESH,
   RESET_PASSWORD,
 } from "../../../shared/types/api-endpoint/auth.api.endpoint.js";
 
@@ -17,6 +20,7 @@ const router = Router();
 const authRepository = new AuthRepository();
 const authController = new AuthController(authRepository);
 
+// Public
 router.post(
   SIGNUP,
   handle(authController.signUp.bind(authController))
@@ -28,11 +32,11 @@ router.post(
 );
 
 router.post(
-  RESET_PASSWORD,
-  verifyjwt,
-  handle(authController.changePassword.bind(authController))
+  REFRESH,
+  handle(authController.refreshAccessToken.bind(authController))
 );
 
+// Protected
 router.post(
   LOGOUT,
   verifyjwt,
@@ -40,14 +44,15 @@ router.post(
 );
 
 router.post(
-  REFRESH,
-  handle(authController.refreshAccessToken.bind(authController))
-);
-
-router.post(
   LOGOUT_ALL,
   verifyjwt,
   handle(authController.logoutAll.bind(authController))
+);
+
+router.post(
+  RESET_PASSWORD,
+  verifyjwt,
+  handle(authController.changePassword.bind(authController))
 );
 
 export default router;

@@ -6,6 +6,7 @@ import { SignUpDto } from "../dto/signup.dto.js";
 import { EmailAlreadyExistsError } from "../errors/email-already-exists.error.js";
 import { InvalidPasswordError } from "../errors/invalid-password.error.js";
 import { InvalidTokenError } from "../errors/invalid-token.error.js";
+import { RefreshTokenExpiredError } from "../errors/refresh-token-expired.error.js";
 import { UserNotFoundError } from "../errors/user-not-found.error.js";
 import { UsernameAlreadyExistsError } from "../errors/username-already-exists.error.js";
 import { User } from "../models/user.model.js";
@@ -75,27 +76,18 @@ export class AuthRepository implements IAuthRepository {
                     "Could not create account."
                 )
             );
-
         }
-
         return ok(
-
             new SignUpResponse(
                 createdUser
             )
-
         );
-
     }
 
-    catch(error){
-
+    catch{
         return err(
-
             new InfrastructureError()
-
         );
-
     }
 
 }
@@ -133,15 +125,10 @@ async login(
 
         }
 
-        const {
-
-            accessToken,
-
-            refreshToken
-
-        } = await generateTokenPair(
-            user._id.toString()
-        );
+      const {
+        accessToken,
+        refreshToken,
+      } = await generateTokenPair(user);
 
         const loginUser =
             await User.findById(user._id)
@@ -219,31 +206,21 @@ async logout(
     const user = await User.findById(userId);
 
     if (!user) {
-      return err(
-        new UserNotFoundError()
-      );
+      return err(new UserNotFoundError());
     }
 
-    await User.findByIdAndUpdate(
-      userId,
-      {
-        $unset: {
-          refreshToken: 1,
-        },
-      }
-    );
+    user.refreshToken = undefined;
 
-    return ok(
-      new LogoutResponse()
-    );
+    await user.save({
+      validateBeforeSave: false,
+    });
+
+    return ok(new LogoutResponse());
 
   } catch {
-    return err(
-      new InfrastructureError()
-    );
+    return err(new InfrastructureError());
   }
 }
-
 
 
 async refreshAccessToken(
@@ -253,11 +230,14 @@ async refreshAccessToken(
     if (!refreshToken) {
       return err(new InvalidTokenError());
     }
-
+    
     const decoded = jwt.verify(
       refreshToken,
-      process.env.REFRESH_TOKEN_SECRET!
-    ) as { _id: string };
+      process.env.ACCESS_REFRESH_SECRET!
+    ) as {
+      _id: string;
+      tokenVersion: number;
+    };
 
     const user = await User.findById(decoded._id);
 
@@ -269,10 +249,8 @@ async refreshAccessToken(
       return err(new InvalidTokenError());
     }
 
-    const tokens =
-      await generateTokenPair(
-        user._id.toString()
-      );
+const tokens =
+  await generateTokenPair(user);
 
     return ok(
       new RefreshTokenResponse(
@@ -317,12 +295,14 @@ async logoutAll(
             )
         );
 
-    } catch {
-
-        return err(
-            new InfrastructureError()
-        );
-
+    } catch(error) {
+  if (error instanceof jwt.TokenExpiredError) {
+    return err(new RefreshTokenExpiredError());
+  }
+  if (error instanceof jwt.JsonWebTokenError) {
+    return err(new InvalidTokenError());
+  }
+  return err(new InfrastructureError());
     }
 
 }
