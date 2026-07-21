@@ -1,21 +1,25 @@
 import { InfrastructureError } from "../../../shared/errors/infrastructure.error.js";
 import { ValidationError } from "../../../shared/errors/validation.error.js";
 import { err, ok } from "../../../shared/result/result.js";
-import { generateUserAccessAndRefreshToken } from "../controller/token.controller.impl.js";
 import { ChangePasswordDto } from "../dto/change-password.dto.js";
 import { LoginDto } from "../dto/login.dto.js";
 import { SignUpDto } from "../dto/signup.dto.js";
 import { EmailAlreadyExistsError } from "../errors/email-already-exists.error.js";
 import { InvalidPasswordError } from "../errors/invalid-password.error.js";
+import { InvalidTokenError } from "../errors/invalid-token.error.js";
 import { UserNotFoundError } from "../errors/user-not-found.error.js";
 import { UsernameAlreadyExistsError } from "../errors/username-already-exists.error.js";
 import { User } from "../models/user.model.js";
 import { ChangePasswordResponse } from "../responses/change-password.response.js";
 import { LoginResponse } from "../responses/login.response.js";
 import { LogoutResponse } from "../responses/logout.response.js";
+import { RefreshTokenResponse } from "../responses/RefreshTokenResponse.js";
 import { SignUpResponse } from "../responses/signup.response.js";
-import { ChangePasswordResult } from "../types/auth.types.js";
+import { generateTokenPair } from "../service/token.service.js";
+import { ChangePasswordResult, LoginResult, LogoutResult, RefreshTokenResult, SignUpResult } from "../types/auth.types.js";
 import { IAuthRepository } from "./interface/auth.repository.interface.js";
+import  jwt  from "jsonwebtoken";
+
 
 export class AuthRepository implements IAuthRepository {
     async signUp(
@@ -136,7 +140,7 @@ async login(
 
             refreshToken
 
-        } = await generateUserAccessAndRefreshToken(
+        } = await generateTokenPair(
             user._id.toString()
         );
 
@@ -242,6 +246,50 @@ async logout(
 
     return ok(
       new LogoutResponse()
+    );
+
+  } catch {
+    return err(
+      new InfrastructureError()
+    );
+  }
+}
+
+
+
+async refreshAccessToken(
+  refreshToken: string
+): Promise<RefreshTokenResult> {
+  try {
+    if (!refreshToken) {
+      return err(new InvalidTokenError());
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET!
+    ) as { _id: string };
+
+    const user = await User.findById(decoded._id);
+
+    if (!user) {
+      return err(new UserNotFoundError());
+    }
+
+    if (user.refreshToken !== refreshToken) {
+      return err(new InvalidTokenError());
+    }
+
+    const tokens =
+      await generateTokenPair(
+        user._id.toString()
+      );
+
+    return ok(
+      new RefreshTokenResponse(
+        tokens.accessToken,
+        tokens.refreshToken
+      )
     );
 
   } catch {

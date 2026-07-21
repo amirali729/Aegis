@@ -53,4 +53,11 @@ router.post(
   handle(authController.logout.bind(authController))
 );
 
+router.post(
+  REFRESH,
+  handle(
+    authController.refreshAccessToken.bind(authController)
+  )
+);
+
 export default router;

@@ -11,6 +11,7 @@ import { SignUpResponse } from "../responses/signup.response.js";
 import { LoginResponse } from "../responses/login.response.js";
 import { ChangePasswordResponse } from "../responses/change-password.response.js";
 import { LogoutResponse } from "../responses/logout.response.js";
+import { RefreshTokenResponse } from "../responses/RefreshTokenResponse.js";
 
 export type AuthError =
   | EmailAlreadyExistsError
@@ -39,3 +40,8 @@ export type ChangePasswordResult = Result<
 export type LogoutResult = Result<
   LogoutResponse,
   AuthError>
+
+export type RefreshTokenResult = Result<
+  RefreshTokenResponse,
+  AuthError
+>

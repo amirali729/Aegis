@@ -122,4 +122,42 @@ async logout(
 
   return result;
 }
+
+async refreshAccessToken(
+  req: Request,
+  res: Response,
+  _next: NextFunction
+) {
+  const refreshToken =
+    req.cookies?.refreshToken;
+
+  const result =
+    await this.repository.refreshAccessToken(
+      refreshToken
+    );
+
+  if (!result.ok) {
+    return result;
+  }
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict" as const,
+  };
+
+  res.cookie(
+    "accessToken",
+    result.value.accessToken,
+    options
+  );
+
+  res.cookie(
+    "refreshToken",
+    result.value.refreshToken,
+    options
+  );
+
+  return result;
+}
 }

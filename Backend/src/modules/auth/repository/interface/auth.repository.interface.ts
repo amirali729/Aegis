@@ -7,6 +7,7 @@ import type {
   LoginResult,
   ChangePasswordResult,
   LogoutResult,
+  RefreshTokenResult,
 } from "../../types/auth.types.js";
 
 export interface IAuthRepository {
@@ -20,4 +21,8 @@ export interface IAuthRepository {
   ): Promise<ChangePasswordResult>;
 
   logout(userId: string): Promise<LogoutResult>;
+
+  refreshAccessToken(
+  refreshToken: string
+): Promise<RefreshTokenResult>;
 }
