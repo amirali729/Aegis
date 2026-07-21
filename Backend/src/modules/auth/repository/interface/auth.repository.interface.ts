@@ -1,10 +1,30 @@
-import { IUser } from "../../models/user.model.js";
-import {CreateUserDto} from "../../dto/login.dto.js";
-export interface IUserRepository {
-    create(user: CreateUserDto): Promise<IUser>;
-    findById(id: string): Promise<IUser | null>;
-    findByUsername(username: string): Promise<IUser | null>;
-    findByEmail(email: string): Promise<IUser | null>;
-    update(user: IUser): Promise<IUser>;
-    delete(id: string): Promise<void>;
+import { SignUpDto } from "../../dto/signup.dto.js";
+import { LoginDto } from "../../dto/login.dto.js";
+import { ChangePasswordDto } from "../../dto/change-password.dto.js";
+
+import type {
+  SignUpResult,
+  LoginResult,
+  ChangePasswordResult,
+  LogoutResult,
+  RefreshTokenResult,
+} from "../../types/auth.types.js";
+
+export interface IAuthRepository {
+  signUp(dto: SignUpDto): Promise<SignUpResult>;
+
+  login(dto: LoginDto): Promise<LoginResult>;
+
+  changePassword(
+    userId: string,
+    dto: ChangePasswordDto
+  ): Promise<ChangePasswordResult>;
+
+  logout(userId: string): Promise<LogoutResult>;
+
+  refreshAccessToken(
+  refreshToken: string
+): Promise<RefreshTokenResult>;
+
+logoutAll(userId: string): Promise<LogoutResult>
 }
