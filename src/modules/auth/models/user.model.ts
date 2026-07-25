@@ -1,5 +1,5 @@
-import type { Schema, Document } from 'mongoose';
-import mongoose from 'mongoose';
+import type { Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import type { SignOptions } from 'jsonwebtoken';
@@ -11,7 +11,13 @@ export interface IUser extends Document {
   email: string;
   password: string;
   fullName?: string;
-  role: 'user' | 'admin';
+  /**
+   * References to Role documents (modules/role). Kept as a plain
+   * ObjectId array (not populated by default) so authorization checks
+   * can decide when to look up fresh permissions vs. rely on a cache.
+   * See shared/security/authorization for permission evaluation.
+   */
+  roles: mongoose.Types.ObjectId[];
   isVerified: boolean;
   emailVerificationToken?: string;
   emailVerificationExpiry?: Date;
@@ -69,10 +75,14 @@ const userSchema: Schema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    role: {
-      type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+    roles: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: 'Role',
+        },
+      ],
+      default: [],
     },
     isVerified: {
       type: Boolean,
@@ -99,7 +109,6 @@ userSchema.methods.generateAccessToken = function () {
     {
       _id: this._id,
       username: this.username,
-      role: this.role,
     },
     process.env.ACCESS_TOKEN_SECRET as string,
     {
