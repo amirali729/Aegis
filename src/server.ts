@@ -1,13 +1,9 @@
-
-
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
+import { createApp } from './app.js';
+import dbConnection from './shared/database/dbconnection.js';
 dotenv.config({
-    path : './.env'
-})
-import dbConnection from './shared/database/dbconnection.js'
-import { createApp } from "./app.js";
-
-
+  path: './.env',
+});
 
 const app = createApp();
 const PORT = Number(process.env.PORT) || 3000;
@@ -18,6 +14,6 @@ dbConnection()
     });
   })
   .catch((error) => {
-    console.error("Database connection failed:", error);
+    console.error('Database connection failed:', error);
     process.exit(1);
   });

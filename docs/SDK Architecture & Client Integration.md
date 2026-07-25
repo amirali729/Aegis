@@ -205,15 +205,9 @@ Example
 
 ```ts
 Identity.configure({
+  baseUrl: 'https://auth.example.com',
 
-baseUrl:
-
-"https://auth.example.com",
-
-clientId:
-
-"abc123"
-
+  clientId: 'abc123',
 });
 ```
 
@@ -221,23 +215,21 @@ Future options
 
 ```ts
 Identity.configure({
+  baseUrl,
 
-baseUrl,
+  clientId,
 
-clientId,
+  clientSecret,
 
-clientSecret,
+  tenant,
 
-tenant,
+  timeout,
 
-timeout,
+  retry,
 
-retry,
+  cookie,
 
-cookie,
-
-storage
-
+  storage,
 });
 ```
 
@@ -249,11 +241,9 @@ Developer
 
 ```ts
 await auth.login({
+  email,
 
-email,
-
-password
-
+  password,
 });
 ```
 
@@ -285,13 +275,11 @@ Developer
 
 ```ts
 await auth.signup({
+  email,
 
-email,
+  password,
 
-password,
-
-username
-
+  username,
 });
 ```
 
@@ -397,9 +385,7 @@ Provider
 
 ```tsx
 <AuthProvider>
-
-<App/>
-
+  <App />
 </AuthProvider>
 ```
 
@@ -412,17 +398,17 @@ const auth = useAuth();
 Methods
 
 ```ts
-auth.login()
+auth.login();
 
-auth.logout()
+auth.logout();
 
-auth.signup()
+auth.signup();
 
-auth.user()
+auth.user();
 
-auth.refresh()
+auth.refresh();
 
-auth.isAuthenticated()
+auth.isAuthenticated();
 ```
 
 ---
@@ -432,11 +418,7 @@ auth.isAuthenticated()
 Example
 
 ```tsx
-<ProtectedRoute>
-
-Dashboard
-
-</ProtectedRoute>
+<ProtectedRoute>Dashboard</ProtectedRoute>
 ```
 
 SDK
@@ -460,32 +442,19 @@ Redirect Login
 Future
 
 ```ts
-const canEdit =
-auth.can(
-
-"user:update"
-
-);
+const canEdit = auth.can('user:update');
 ```
 
 Another
 
 ```ts
-auth.hasRole(
-
-"Admin"
-
-);
+auth.hasRole('Admin');
 ```
 
 Another
 
 ```ts
-auth.hasPermission(
-
-"user:delete"
-
-);
+auth.hasPermission('user:delete');
 ```
 
 ---
@@ -505,8 +474,7 @@ Supported.
 Example
 
 ```ts
-const session =
-await auth.getServerSession();
+const session = await auth.getServerSession();
 ```
 
 ---
@@ -516,33 +484,24 @@ await auth.getServerSession();
 Example
 
 ```ts
-app.use(
-
-identityMiddleware()
-
-);
+app.use(identityMiddleware());
 ```
 
 Request becomes
 
 ```ts
-req.user
+req.user;
 ```
 
 Protected Route
 
 ```ts
 app.get(
+  '/profile',
 
-"/profile",
+  requirePermission('user:view'),
 
-requirePermission(
-
-"user:view"
-
-),
-
-controller
+  controller,
 );
 ```
 
@@ -559,15 +518,15 @@ Axios Error
 Developer receives
 
 ```ts
-AuthenticationError
+AuthenticationError;
 
-AuthorizationError
+AuthorizationError;
 
-ValidationError
+ValidationError;
 
-NetworkError
+NetworkError;
 
-ServerError
+ServerError;
 ```
 
 Typed errors.
@@ -626,10 +585,9 @@ Developers can subscribe to events.
 
 ```ts
 auth.on(
+  'login',
 
-"login",
-
-callback
+  callback,
 );
 ```
 
@@ -685,11 +643,9 @@ Configure
 
 ```ts
 Identity.configure({
+  baseUrl,
 
-baseUrl,
-
-clientId
-
+  clientId,
 });
 ```
 
@@ -697,9 +653,7 @@ Wrap App
 
 ```tsx
 <AuthProvider>
-
-<App/>
-
+  <App />
 </AuthProvider>
 ```
 

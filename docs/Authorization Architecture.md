@@ -218,7 +218,7 @@ Many roles
 Instead of
 
 ```ts
-role: "user" | "admin"
+role: 'user' | 'admin';
 ```
 
 Future model

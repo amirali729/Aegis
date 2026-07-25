@@ -569,7 +569,7 @@ Mongo equivalent
 
 ```ts
 {
-  tenantId: currentTenant
+  tenantId: currentTenant;
 }
 ```
 
@@ -655,14 +655,12 @@ Configuration
 
 ```ts
 IdentitySDK.configure({
+  clientId,
 
-clientId,
+  baseUrl,
 
-baseUrl,
-
-apiKey
-
-})
+  apiKey,
+});
 ```
 
 SDK communicates with
