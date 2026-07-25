@@ -1,76 +1,32 @@
-// import type { Request, Response, NextFunction } from "express";
-// import { BaseResponse } from "../response/base.response.js";
-// import { mapAuthError } from "../../modules/auth/http/map-auth-error.js";
-// import type { Result } from "../result/result.js";
-// import type { ErrorShape } from "../errors/error.shape.js";
+import type { Request, Response, NextFunction } from 'express';
+import type { Result } from '../result/result.js';
+import type { ErrorShape } from '../errors/error.shape.js';
+import { BaseResponse } from '../response/base.response.js';
+import type { BaseErrorResponse } from '../response/base.error.response.js';
+import { HttpStatus } from '../http/http-status.js';
 
-// export function handle<T>(
-//   controller: (
-//     req: Request
-//   ) => Promise<Result<T, ErrorShape>>
-// ) {
-//   return async (
-//     req: Request,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-
-//     try {
-
-//       const result = await controller(req);
-
-//       if (!result.ok) {
-//         return mapAuthError(result.error)
-//           .send(res);
-//       }
-
-//       return new BaseResponse(
-//         result.value,
-//         "Success",
-//         200
-//       ).send(res);
-
-//     } catch (error) {
-
-//       return mapAuthError({
-//         kind: "infrastructure",
-//         message:
-//           "Something went wrong. Please try again later.",
-//         timestamp: new Date(),
-//       }).send(res);
-
-//     }
-
-//   };
-// }
-
-import type { Request, Response, NextFunction } from "express";
-import type { Result } from "../result/result.js";
-import { BaseResponse } from "../response/base.response.js";
-import { mapAuthError } from "../../modules/auth/http/map-auth-error.js";
-import { HttpStatus } from "../http/http-status.js";
-
-export function handle<T>(
-  controller: (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => Promise<Result<T, any>>
+/**
+ * Wraps a controller method that returns a Result<T, E>, translating it
+ * into an HTTP response. Each module supplies its own error mapper (e.g.
+ * mapAuthError, mapRoleError) so this stays decoupled from any one
+ * module's error union.
+ */
+export function handle<T, E extends ErrorShape>(
+  controller: (req: Request, res: Response, next: NextFunction) => Promise<Result<T, E>>,
+  mapError: (error: E) => BaseErrorResponse,
+  successStatus: number = HttpStatus.OK,
 ) {
-  return async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    const result = await controller(req, res, next);
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await controller(req, res, next);
 
-    if (!result.ok) {
-      return mapAuthError(result.error).send(res);
+      if (!result.ok) {
+        return mapError(result.error).send(res);
+      }
+
+      return new BaseResponse(result.value, successStatus).send(res);
+    } catch (error) {
+      next(error);
     }
-
-    return new BaseResponse(
-      result.value,
-      HttpStatus.OK
-    ).send(res);
   };
 }
