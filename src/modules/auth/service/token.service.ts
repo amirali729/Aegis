@@ -1,4 +1,4 @@
-import type { IUser } from '../models/user.model.js';
+import type { IUser } from '../model/user.model.js';
 
 export interface TokenPair {
   accessToken: string;

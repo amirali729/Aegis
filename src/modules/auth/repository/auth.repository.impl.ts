@@ -1,8 +1,8 @@
 import { InfrastructureError } from '../../../shared/errors/infrastructure.error.js';
 import { err, ok } from '../../../shared/result/result.js';
 import type { SignUpDto } from '../dto/signup.dto.js';
-import type { IUser } from '../models/user.model.js';
-import { User } from '../models/user.model.js';
+import type { IUser } from '../model/user.model.js';
+import { User } from '../model/user.model.js';
 import type { DataResult, IAuthRepository } from './interface/auth.repository.interface.js';
 
 export class AuthRepository implements IAuthRepository {

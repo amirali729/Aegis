@@ -1,4 +1,4 @@
-import type { IPermission } from '../models/permission.model.js';
+import type { IPermission } from '../model/permission.model.js';
 import { PermissionResponse } from '../responses/permission.response.js';
 
 export function toPermissionResponse(permission: IPermission): PermissionResponse {

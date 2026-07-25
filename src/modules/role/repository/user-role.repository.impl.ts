@@ -1,6 +1,6 @@
 import { InfrastructureError } from '../../../shared/errors/infrastructure.error.js';
 import { err, ok } from '../../../shared/result/result.js';
-import { User } from '../../auth/models/user.model.js';
+import { User } from '../../auth/model/user.model.js';
 import type {
   DataResult,
   IUserRoleRepository,

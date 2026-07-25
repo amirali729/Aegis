@@ -1,5 +1,5 @@
 import type { IRole } from '../model/role.model.js';
-import type { IPermission } from '../../permission/models/permission.model.js';
+import type { IPermission } from '../../permission/model/permission.model.js';
 import { RoleResponse } from '../responses/role.response.js';
 
 export function toRoleResponse(role: IRole): RoleResponse {

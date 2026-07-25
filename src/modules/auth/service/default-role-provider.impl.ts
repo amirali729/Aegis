@@ -1,5 +1,5 @@
 import type { IDefaultRoleProvider } from '../../auth/service/interface/default-role-provider.interface.js';
-import { Role } from '../models/role.model.js';
+import { Role } from '../model/role.model.js';
 
 const DEFAULT_ROLE_NAME = 'User';
 

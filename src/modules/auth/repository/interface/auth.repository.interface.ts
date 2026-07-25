@@ -1,5 +1,5 @@
 import type { SignUpDto } from '../../dto/signup.dto.js';
-import type { IUser } from '../../models/user.model.js';
+import type { IUser } from '../../model/user.model.js';
 import type { Result } from '../../../../shared/result/result.js';
 import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
 

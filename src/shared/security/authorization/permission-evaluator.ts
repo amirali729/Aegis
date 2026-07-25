@@ -1,5 +1,5 @@
-import { User } from '../../../modules/auth/models/user.model.js';
-import type { IPermission } from '../../../modules/permission/models/permission.model.js';
+import { User } from '../../../modules/auth/model/user.model.js';
+import type { IPermission } from '../../../modules/permission/model/permission.model.js';
 import type { IRole } from '../../../modules/role/model/role.model.js';
 
 /**

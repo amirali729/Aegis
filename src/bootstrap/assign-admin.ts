@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
 import dbConnection from '../shared/database/dbconnection.js';
-import { User } from '../modules/auth/models/user.model.js';
+import { User } from '../modules/auth/model/user.model.js';
 import { Role } from '../modules/role/model/role.model.js';
 
 dotenv.config({ path: './.env' });

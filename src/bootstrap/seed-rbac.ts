@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
 import dbConnection from '../shared/database/dbconnection.js';
-import { Permission } from '../modules/permission/models/permission.model.js';
+import { Permission } from '../modules/permission/model/permission.model.js';
 import { Role } from '../modules/role/model/role.model.js';
 import { DEFAULT_PERMISSIONS, DEFAULT_ROLES } from './rbac-defaults.js';
 

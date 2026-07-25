@@ -2,8 +2,8 @@ import { InfrastructureError } from '../../../shared/errors/infrastructure.error
 import { err, ok } from '../../../shared/result/result.js';
 import type { CreatePermissionDto } from '../dto/create-permission.dto.js';
 import type { UpdatePermissionDto } from '../dto/update-permission.dto.js';
-import type { IPermission } from '../models/permission.model.js';
-import { Permission } from '../models/permission.model.js';
+import type { IPermission } from '../model/permission.model.js';
+import { Permission } from '../model/permission.model.js';
 import type {
   DataResult,
   IPermissionRepository,

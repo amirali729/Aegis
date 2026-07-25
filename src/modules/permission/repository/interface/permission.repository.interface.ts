@@ -1,4 +1,4 @@
-import type { IPermission } from '../../models/permission.model.js';
+import type { IPermission } from '../../model/permission.model.js';
 import type { Result } from '../../../../shared/result/result.js';
 import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
 import type { CreatePermissionDto } from '../../dto/create-permission.dto.js';
