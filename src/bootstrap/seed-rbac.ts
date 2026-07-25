@@ -6,7 +6,7 @@ import { Permission } from '../modules/permission/model/permission.model.js';
 import { Role } from '../modules/role/model/role.model.js';
 import { DEFAULT_PERMISSIONS, DEFAULT_ROLES } from './rbac-defaults.js';
 
-dotenv.config({ path: './.env' });
+dotenv.config({ path: './src/shared/config/.env' });
 
 async function seedRbac() {
   await dbConnection();

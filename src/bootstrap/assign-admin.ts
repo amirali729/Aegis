@@ -5,7 +5,7 @@ import dbConnection from '../shared/database/dbconnection.js';
 import { User } from '../modules/auth/model/user.model.js';
 import { Role } from '../modules/role/model/role.model.js';
 
-dotenv.config({ path: './.env' });
+dotenv.config({ path: './src/shared/config/.env' });
 
 async function assignAdmin() {
   const email = process.argv[2];
