@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import type { Response } from 'express';
 
 export class BaseResponse<T> {
   public readonly success: boolean;
@@ -7,11 +7,7 @@ export class BaseResponse<T> {
   public readonly data: T;
   public readonly timestamp: string;
 
-  constructor(
-    data: T,
-    statusCode = 200,
-    message = "Request completed successfully.",
-  ) {
+  constructor(data: T, statusCode = 200, message = 'Request completed successfully.') {
     this.success = true;
     this.statusCode = statusCode;
     this.message = message;

@@ -1,7 +1,5 @@
 export class LogoutResponse {
-  readonly kind = "success";
+  readonly kind = 'success';
 
-  constructor(
-    public readonly message = "User logged out successfully."
-  ) {}
+  constructor(public readonly message = 'User logged out successfully.') {}
 }

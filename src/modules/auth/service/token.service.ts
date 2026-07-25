@@ -1,13 +1,11 @@
-import type { IUser } from "../models/user.model.js";
+import type { IUser } from '../models/user.model.js';
 
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
 }
 
-export async function generateTokenPair(
-  user: IUser
-): Promise<TokenPair> {
+export async function generateTokenPair(user: IUser): Promise<TokenPair> {
   const accessToken = user.generateAccessToken();
   const refreshToken = user.generateRefreshToken();
 

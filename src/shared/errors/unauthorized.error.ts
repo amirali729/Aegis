@@ -1,10 +1,8 @@
-import type { ErrorShape } from "./error.shape.js";
+import type { ErrorShape } from './error.shape.js';
 
 export class UnauthorizedError implements ErrorShape {
-  readonly kind = "unauthorized";
+  readonly kind = 'unauthorized';
   readonly timestamp = new Date();
 
-  constructor(
-    public readonly message = "Unauthorized"
-  ) {}
+  constructor(public readonly message = 'Unauthorized') {}
 }

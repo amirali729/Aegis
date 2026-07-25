@@ -60,9 +60,9 @@ while remaining completely open-source and extensible.
 - Cookie Authentication
 - Password Hashing
 - Password Change
-- Email Verification *(Planned)*
-- Forgot Password *(Planned)*
-- Password Reset *(Planned)*
+- Email Verification _(Planned)_
+- Forgot Password _(Planned)_
+- Password Reset _(Planned)_
 
 ---
 
@@ -251,8 +251,8 @@ The platform is designed to support multiple databases through repository abstra
 Supported providers:
 
 - MongoDB
-- PostgreSQL *(Planned)*
-- MySQL *(Planned)*
+- PostgreSQL _(Planned)_
+- MySQL _(Planned)_
 
 Only one provider is active at runtime.
 

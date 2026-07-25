@@ -1,5 +1,3 @@
 export class RefreshTokenDto {
-  constructor(
-    public readonly refreshToken: string
-  ) {}
+  constructor(public readonly refreshToken: string) {}
 }

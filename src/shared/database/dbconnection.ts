@@ -1,9 +1,9 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const dbConnection = async () => {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error("MONGO_URI is missing in .env");
+    throw new Error('MONGO_URI is missing in .env');
   }
 
   try {

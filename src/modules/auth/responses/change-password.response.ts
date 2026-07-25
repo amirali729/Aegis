@@ -1,7 +1,5 @@
 export class ChangePasswordResponse {
-  readonly kind = "success";
+  readonly kind = 'success';
 
-  constructor(
-    public readonly message = "Password changed successfully."
-  ) {}
+  constructor(public readonly message = 'Password changed successfully.') {}
 }
