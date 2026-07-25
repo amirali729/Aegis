@@ -13,6 +13,17 @@ export const DEFAULT_PERMISSIONS: Array<{
   { key: 'permission:create', description: 'Create permissions.' },
   { key: 'permission:update', description: 'Update permissions.' },
   { key: 'permission:delete', description: 'Delete permissions.' },
+  { key: 'tenant:view', description: 'View tenants.' },
+  { key: 'tenant:create', description: 'Create tenants.' },
+  { key: 'tenant:update', description: 'Update tenants.' },
+  { key: 'tenant:delete', description: 'Delete tenants.' },
+  { key: 'application:view', description: 'View applications.' },
+  { key: 'application:create', description: 'Create applications.' },
+  { key: 'application:update', description: 'Update applications and regenerate client secrets.' },
+  { key: 'application:delete', description: 'Delete applications.' },
+  { key: 'apikey:view', description: 'View API keys (metadata only).' },
+  { key: 'apikey:create', description: 'Create API keys.' },
+  { key: 'apikey:delete', description: 'Revoke API keys.' },
 ];
 
 export const DEFAULT_ROLES: Array<{
