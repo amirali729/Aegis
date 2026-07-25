@@ -1,10 +1,10 @@
-import { UserResponse } from "./user.response.js"
+import type { UserResponse } from './user.response.js';
 
 export class SignUpResponse {
-  readonly kind = "created";
+  readonly kind = 'created';
 
   constructor(
-    public readonly user:UserResponse,
-    public readonly message = "Account created successfully."
+    public readonly user: UserResponse,
+    public readonly message = 'Account created successfully.',
   ) {}
 }

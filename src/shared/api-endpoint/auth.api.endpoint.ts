@@ -3,7 +3,7 @@
 // | `GET /me`                         | ✅          | ⭐⭐⭐⭐⭐   |
 // | `PATCH /me`                       | ✅          | ⭐⭐⭐⭐     |
 // | `POST /verify-email`              | ❌          | ⭐⭐⭐⭐     |
-// | `POST /resend-verification-email` | ❌          | ⭐⭐⭐⭐     |
+// | `POST /resend-verification`       | ❌          | ⭐⭐⭐⭐     |
 // | `POST /forgot-password`           | ❌          | ⭐⭐⭐⭐⭐   |
 // | `POST /reset-password`            | ❌          | ⭐⭐⭐⭐⭐   |
 // | `DELETE /me`                      | ✅          | ⭐⭐⭐       |
@@ -17,13 +17,33 @@
 // DELETE	/users/me	Delete own account
 // DELETE	/users/:id	Delete user (Admin)
 
+// NOTE: `RESET_PASSWORD` used to point at `/auth/resetPassword`, but that
+// endpoint is actually "change password while logged in", which is a
+// different flow from a token-based password reset. It has been renamed
+// to CHANGE_PASSWORD, and FORGOT_PASSWORD / RESET_PASSWORD now refer to
+// the real token-based reset flow. This is a breaking API rename.
 
 const AuthApiEndpoint = {
-    SIGNUP: '/auth/signup',
-    LOGIN: '/auth/login',
-    LOGOUT: '/auth/logout',
-    RESET_PASSWORD: '/auth/resetPassword',
-    REFRESH: '/auth/refresh',
-    LOGOUT_ALL: '/auth/logoutAll'
-}
-export const { SIGNUP, LOGIN, LOGOUT, RESET_PASSWORD, REFRESH, LOGOUT_ALL } = AuthApiEndpoint
+  SIGNUP: '/auth/signup',
+  LOGIN: '/auth/login',
+  LOGOUT: '/auth/logout',
+  LOGOUT_ALL: '/auth/logoutAll',
+  REFRESH: '/auth/refresh',
+  CHANGE_PASSWORD: '/auth/changePassword',
+  VERIFY_EMAIL: '/auth/verifyEmail',
+  RESEND_VERIFICATION: '/auth/resendVerification',
+  FORGOT_PASSWORD: '/auth/forgotPassword',
+  RESET_PASSWORD: '/auth/resetPassword',
+};
+export const {
+  SIGNUP,
+  LOGIN,
+  LOGOUT,
+  LOGOUT_ALL,
+  REFRESH,
+  CHANGE_PASSWORD,
+  VERIFY_EMAIL,
+  RESEND_VERIFICATION,
+  FORGOT_PASSWORD,
+  RESET_PASSWORD,
+} = AuthApiEndpoint;

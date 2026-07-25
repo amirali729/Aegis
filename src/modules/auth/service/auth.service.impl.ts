@@ -8,12 +8,12 @@ import type { IMailer } from '../../email/mailer.interface.js';
 import {
   buildPasswordResetEmail,
   buildVerificationEmail,
-} from '../../email/templates/auth-emails.js';
+} from '../../email/templates/auth.mail.js';
 
 import type { IAuthRepository } from '../repository/interface/auth.repository.interface.js';
 import type { IAuthService } from './interface/auth.service.interface.js';
 import { generateTokenPair } from './token.service.js';
-import { toUserResponse } from './user-mapper.js';
+import { toUserResponse } from './user.mapper.js';
 
 import type { ChangePasswordDto } from '../dto/change-password.dto.js';
 import type { LoginDto } from '../dto/login.dto.js';

@@ -1,20 +1,15 @@
-import { UserResponse } from "./user.response.js";
+import type { UserResponse } from './user.response.js';
 
 export class LoginResponse {
+  readonly kind = 'success';
 
-    readonly kind = "success";
+  constructor(
+    public readonly user: UserResponse,
 
-    constructor(
+    public readonly accessToken: string,
 
-        public readonly user: UserResponse,
+    public readonly refreshToken: string,
 
-        public readonly accessToken:string,
-
-        public readonly refreshToken:string,
-
-        public readonly message =
-            "Login successful"
-
-    ){}
-
+    public readonly message = 'Login successful',
+  ) {}
 }

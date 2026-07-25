@@ -1,0 +1,7 @@
+export class ForgotPasswordResponse {
+  readonly kind = 'success';
+
+  constructor(
+    public readonly message = 'If an account with that email exists, a password reset link has been sent.',
+  ) {}
+}
