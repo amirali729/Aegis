@@ -1,102 +1,145 @@
-import mongoose , {Schema,Document} from "mongoose";
-import bcrypt from 'bcrypt'
-import jwt, { SignOptions } from "jsonwebtoken";
-
+import type { Schema, Document } from 'mongoose';
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import type { SignOptions } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+import { hashToken } from '../../../shared/security/hashing/token-hash.js';
 
 export interface IUser extends Document {
-    username: string;
-    email: string;
-    password: string;
-    fullName?: string;
-    role: "user" | "admin";
-    isVerified: boolean;
-    emailVerificationToken?: string;
-    emailVerificationExpiry?: Date;
-    refreshToken?: string;
-    tokenVersion: number;
-    isPasswordCorrect(password: string): Promise<boolean>;
-    generateAccessToken(): string;
-    generateRefreshToken(): string;
+  username: string;
+  email: string;
+  password: string;
+  fullName?: string;
+  role: 'user' | 'admin';
+  isVerified: boolean;
+  emailVerificationToken?: string;
+  emailVerificationExpiry?: Date;
+  passwordResetToken?: string;
+  passwordResetExpiry?: Date;
+  refreshToken?: string;
+  tokenVersion: number;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+  isPasswordCorrect(password: string): Promise<boolean>;
+  generateAccessToken(): string;
+  generateRefreshToken(): string;
+  /**
+   * Generates a raw (unhashed) email verification token, persists only
+   * its hash + expiry on the document, and returns the raw token so the
+   * caller can email it. Caller is still responsible for save().
+   */
+  createEmailVerificationToken(): string;
+  /**
+   * Generates a raw (unhashed) password reset token, persists only its
+   * hash + expiry on the document, and returns the raw token. Caller is
+   * still responsible for save().
+   */
+  createPasswordResetToken(): string;
 }
-const userSchema: Schema = new mongoose.Schema({
+const userSchema: Schema = new mongoose.Schema(
+  {
     username: {
-        type: String,
-        required: true,
-        unique: true,
-        index: true,
-        lowercase: true,
-        trim: true
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      lowercase: true,
+      trim: true,
     },
     email: {
-        type: String,
-        required: [true, "please provide the email too"],
-        unique: true,
-        lowercase: true,
-        trim: true,
+      type: String,
+      required: [true, 'please provide the email too'],
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
     password: {
-        type: String,
-        required: [true, "password is required please enter your password"]
+      type: String,
+      required: [true, 'password is required please enter your password'],
     },
     fullName: {
-        type: String,
-        trim: true
+      type: String,
+      trim: true,
     },
     refreshToken: {
-        type: String
+      type: String,
     },
     tokenVersion: {
-    type: Number,
-    default: 0
+      type: Number,
+      default: 0,
     },
     role: {
-        type: String,
-        enum: ["user", "admin"],
-        default: "user"
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
     },
     isVerified: {
-        type: Boolean,
-        default: false
+      type: Boolean,
+      default: false,
     },
     emailVerificationToken: String,
     emailVerificationExpiry: Date,
+    passwordResetToken: String,
+    passwordResetExpiry: Date,
+  },
+  { timestamps: true },
+);
 
-
-}, { timestamps: true })
-
-userSchema.pre<IUser>("save", async function () {
-    if (!this.isModified("password")) return 
-    this.password = await bcrypt.hash(this.password, 10)
-
-})
-userSchema.methods.isPasswordCorrect = async function (
-  password: string
-): Promise<boolean> {
+userSchema.pre<IUser>('save', async function () {
+  if (!this.isModified('password')) return;
+  this.password = await bcrypt.hash(this.password, 10);
+});
+userSchema.methods.isPasswordCorrect = async function (password: string): Promise<boolean> {
   return await bcrypt.compare(password, this.password);
 };
 
 userSchema.methods.generateAccessToken = function () {
-    return jwt.sign(
-        {
-            _id: this._id,
-            username: this.username,
-            role: this.role,
-        },
-        process.env.ACCESS_TOKEN_SECRET as string,
-        {
-            expiresIn: process.env.ACCESS_TOKEN_EXPIRY as SignOptions["expiresIn"]
-        }
-    )
-}
+  return jwt.sign(
+    {
+      _id: this._id,
+      username: this.username,
+      role: this.role,
+    },
+    process.env.ACCESS_TOKEN_SECRET as string,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY as SignOptions['expiresIn'],
+    },
+  );
+};
 
 userSchema.methods.generateRefreshToken = function () {
-    return jwt.sign({
-        _id: this._id
+  return jwt.sign(
+    {
+      _id: this._id,
     },
-        process.env.ACCESS_REFRESH_SECRET as jwt.Secret,{
-        expiresIn: process.env.ACCESS_REFRESH_EXPIRY as SignOptions["expiresIn"]
-}
-    )
-}
+    process.env.ACCESS_REFRESH_SECRET as jwt.Secret,
+    {
+      expiresIn: process.env.ACCESS_REFRESH_EXPIRY as SignOptions['expiresIn'],
+    },
+  );
+};
 
-export const User = mongoose.model<IUser>("User", userSchema)
+userSchema.methods.createEmailVerificationToken = function (): string {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+
+  this.emailVerificationToken = hashToken(rawToken);
+  this.emailVerificationExpiry = new Date(
+    Date.now() + 24 * 60 * 60 * 1000, // 24h
+  );
+
+  return rawToken;
+};
+
+userSchema.methods.createPasswordResetToken = function (): string {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+
+  this.passwordResetToken = hashToken(rawToken);
+  this.passwordResetExpiry = new Date(
+    Date.now() + 60 * 60 * 1000, // 1h
+  );
+
+  return rawToken;
+};
+
+export const User = mongoose.model<IUser>('User', userSchema);
