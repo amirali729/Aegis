@@ -3,7 +3,7 @@ import type { IRoleController } from './interface/role.controller.interface.js';
 import type { IRoleService } from '../service/interface/role.service.interface.js';
 import { CreateRoleDto } from '../dto/create-role.dto.js';
 import { UpdateRoleDto } from '../dto/update-role.dto.js';
-import { SetRolePermissionsDto } from '../dto/set-role-permissions.dto.js';
+import { SetRolePermissionsDto } from '../dto/set-role-permission.dto.js';
 import { AssignRoleDto } from '../dto/assign-role.dto.js';
 import type {
   AssignRoleResult,

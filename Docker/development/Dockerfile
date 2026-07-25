@@ -1,13 +1,28 @@
-FROM node:22-alpine
+# ---- Build stage ----
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package*.json ./
+RUN npm ci
 
-RUN npm install
+COPY tsconfig.json ./
+COPY src ./src
 
-COPY . .
+RUN npm run build
+
+# ---- Production stage ----
+FROM node:22-alpine AS production
+
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 5000
 
-CMD ["npm", "run", "dev"]
+CMD ["node", "dist/server.js"]
