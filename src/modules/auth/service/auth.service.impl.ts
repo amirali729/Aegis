@@ -13,7 +13,7 @@ import type { IMailer } from '../../email/mailer.interface.js';
 import {
   buildPasswordResetEmail,
   buildVerificationEmail,
-} from '../../email/templates/auth.mail.js';
+} from '../../email/templates/auth.emails.js';
 
 import type { IAuthRepository } from '../repository/interface/auth.repository.interface.js';
 import type { IAuthService } from './interface/auth.service.interface.js';
