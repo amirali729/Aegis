@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { createApp } from './app.js';
 import dbConnection from './shared/database/dbconnection.js';
 dotenv.config({
-  path: './.env',
+  path: './src/shared/config/.env',
 });
 
 const app = createApp();

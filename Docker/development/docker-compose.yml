@@ -1,0 +1,61 @@
+version: '3.9'
+
+services:
+  backend:
+    container_name: identity-backend
+
+    build:
+      context: ../..
+      dockerfile: Docker/development/Dockerfile
+
+    restart: unless-stopped
+
+    ports:
+      - '5000:5000'
+
+    env_file:
+      - .env.example
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+    volumes:
+      - ../../:/app
+      - /app/node_modules
+
+    networks:
+      - identity-network
+
+  mongodb:
+    image: mongo:8
+
+    container_name: identity-mongodb
+
+    restart: unless-stopped
+
+    ports:
+      - '27017:27017'
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_DATABASE: identity_platform
+
+    volumes:
+      - mongodb_data:/data/db
+
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - identity-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  identity-network:

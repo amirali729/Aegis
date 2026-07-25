@@ -10,7 +10,8 @@ export class AuthRepository implements IAuthRepository {
     try {
       const user = await User.findOne({ email });
       return ok(user);
-    } catch {
+    } catch (error) {
+      console.error(error);
       return err(new InfrastructureError());
     }
   }
@@ -19,7 +20,8 @@ export class AuthRepository implements IAuthRepository {
     try {
       const user = await User.findOne({ username });
       return ok(user);
-    } catch {
+    } catch (error) {
+      console.error(error);
       return err(new InfrastructureError());
     }
   }
@@ -30,7 +32,8 @@ export class AuthRepository implements IAuthRepository {
         $or: [{ email }, { username }],
       });
       return ok(user);
-    } catch {
+    } catch (error) {
+      console.error(error);
       return err(new InfrastructureError());
     }
   }
@@ -39,7 +42,8 @@ export class AuthRepository implements IAuthRepository {
     try {
       const user = await User.findById(userId);
       return ok(user);
-    } catch {
+    } catch (error) {
+      console.error(error);
       return err(new InfrastructureError());
     }
   }
@@ -51,7 +55,8 @@ export class AuthRepository implements IAuthRepository {
         emailVerificationExpiry: { $gt: new Date() },
       });
       return ok(user);
-    } catch {
+    } catch (error) {
+      console.error(error);
       return err(new InfrastructureError());
     }
   }
@@ -62,7 +67,8 @@ export class AuthRepository implements IAuthRepository {
         passwordResetToken: tokenHash,
       });
       return ok(user);
-    } catch {
+    } catch (error) {
+      console.error(error);
       return err(new InfrastructureError());
     }
   }
@@ -86,7 +92,8 @@ export class AuthRepository implements IAuthRepository {
         validateBeforeSave: options?.validateBeforeSave ?? true,
       });
       return ok(saved);
-    } catch {
+    } catch (error) {
+      console.error(error);
       return err(new InfrastructureError());
     }
   }
