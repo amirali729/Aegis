@@ -1,38 +1,18 @@
-import type { Request, Response, NextFunction } from 'express';
-import type { IPermissionController } from '../controller/interface/permission.controller.interface.js';
-import type { IPermissionService } from '../service/interface/permission.service.interface.js';
-import { CreatePermissionDto } from '../dto/create-permission.dto.js';
-import { UpdatePermissionDto } from '../dto/update-permission.dto.js';
-import type {
-  DeletePermissionResult,
-  PermissionListResult,
-  PermissionResult,
-} from '../types/permission.types.js';
+import { BaseErrorResponse } from '../../../shared/response/base.error.response.js';
+import type { PermissionError } from '../types/permission.types.js';
 
-export class PermissionController implements IPermissionController {
-  constructor(private readonly service: IPermissionService) {}
+const errorMap: Record<PermissionError['kind'], (error: PermissionError) => BaseErrorResponse> = {
+  permission_not_found: (error) => new BaseErrorResponse(error.message, 404),
 
-  async list(_req: Request, _res: Response, _next: NextFunction): Promise<PermissionListResult> {
-    return this.service.list();
-  }
+  permission_already_exists: (error) => new BaseErrorResponse(error.message, 409),
 
-  async getById(req: Request, _res: Response, _next: NextFunction): Promise<PermissionResult> {
-    return this.service.getById(req.params.id as string);
-  }
+  invalid_permission_key: (error) => new BaseErrorResponse(error.message, 400),
 
-  async create(req: Request, _res: Response, _next: NextFunction): Promise<PermissionResult> {
-    const dto = new CreatePermissionDto(req.body.key, req.body.description);
+  validation_error: (error) => new BaseErrorResponse(error.message, 400),
 
-    return this.service.create(dto);
-  }
+  infrastructure: (error) => new BaseErrorResponse(error.message, 500),
+};
 
-  async update(req: Request, _res: Response, _next: NextFunction): Promise<PermissionResult> {
-    const dto = new UpdatePermissionDto(req.body.description);
-
-    return this.service.update(req.params.id as string, dto);
-  }
-
-  async delete(req: Request, _res: Response, _next: NextFunction): Promise<DeletePermissionResult> {
-    return this.service.delete(req.params.id as string);
-  }
+export function mapPermissionError(error: PermissionError): BaseErrorResponse {
+  return errorMap[error.kind](error);
 }
