@@ -1,10 +1,15 @@
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 import { err, ok } from '../../../shared/result/result.js';
 import { ValidationError } from '../../../shared/errors/validation.error.js';
 import { hashToken } from '../../../shared/security/hashing/token-hash.js';
 
 import type { IMailer } from '../../email/mailer.interface.js';
+// import {
+//   buildPasswordResetEmail,
+//   buildVerificationEmail,
+// } from "../../email/templates/auth-emails.js";
 import {
   buildPasswordResetEmail,
   buildVerificationEmail,
@@ -12,8 +17,9 @@ import {
 
 import type { IAuthRepository } from '../repository/interface/auth.repository.interface.js';
 import type { IAuthService } from './interface/auth.service.interface.js';
+import type { IDefaultRoleProvider } from './interface/default-role-provider.interface.js';
 import { generateTokenPair } from './token.service.js';
-import { toUserResponse } from './user.mapper.js';
+import { toUserResponse } from './user-mapper.js';
 
 import type { ChangePasswordDto } from '../dto/change-password.dto.js';
 import type { LoginDto } from '../dto/login.dto.js';
@@ -60,6 +66,7 @@ export class AuthService implements IAuthService {
     private readonly repository: IAuthRepository,
     private readonly mailer: IMailer,
     private readonly clientUrl: string,
+    private readonly defaultRoleProvider?: IDefaultRoleProvider,
   ) {}
 
   async signUp(dto: SignUpDto): Promise<SignUpResult> {
@@ -83,6 +90,12 @@ export class AuthService implements IAuthService {
     }
 
     const user = created.value;
+
+    const defaultRoleId = await this.defaultRoleProvider?.getDefaultRoleId();
+
+    if (defaultRoleId) {
+      user.roles.push(new mongoose.Types.ObjectId(defaultRoleId));
+    }
 
     const rawVerificationToken = user.createEmailVerificationToken();
 

@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import authRouter from './modules/auth/routes/auth.router.js';
+import authRouter from './modules/auth/routes/auth.routes.js';
 import userRouter from './routes/user.router.js';
 
 export function createApp() {
