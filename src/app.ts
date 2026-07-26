@@ -9,6 +9,7 @@ import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
 import healthRouter from './shared/http/health.router.js';
 import tenantRouter from './modules/tenant/routes/tenant.routes.js';
+import swaggerRouter from './swagger.routes.js';
 import applicationRouter from './modules/application/routes/application.routes.js';
 
 import { globalRateLimiter } from './shared/security/middleware/rate-limit.middleware.js';
@@ -52,6 +53,7 @@ export function createApp() {
   app.use(globalRateLimiter);
 
   app.use('/health', healthRouter);
+  app.use('/api/docs', swaggerRouter);
 
   app.use('/api/v1', authRouter);
   app.use('/api/v1', permissionRouter);

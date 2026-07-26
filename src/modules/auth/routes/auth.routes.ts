@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { AuthRepository } from '../repository/auth.repository.impl.js';
 import { AuthService } from '../service/auth.service.impl.js';
 import { AuthController } from '../controller/auth.controller.impl.js';
-import { ConsoleMailer } from '../../email/console.mailer.js';
+import { createMailer } from '../../email/mailer.facotry.js';
 import { DefaultRoleProvider } from '../../role/service/default-role-provider.impl.js';
 
 import { handle } from '../../../shared/http/handle.js';
@@ -43,7 +43,7 @@ const router = Router();
 // Composition root: swap ConsoleMailer for a real provider (SMTP,
 // Resend, SES, ...) here in production without touching AuthService.
 const authRepository = new AuthRepository();
-const mailer = new ConsoleMailer();
+const mailer = createMailer();
 const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
 const defaultRoleProvider = new DefaultRoleProvider();
 
