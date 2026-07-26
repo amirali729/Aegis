@@ -1,19 +1,20 @@
-import express from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import cookieParser from 'cookie-parser';
 
+import applicationRouter from './modules/application/routes/application.routes.js';
 import authRouter from './modules/auth/routes/auth.routes.js';
 import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
-import healthRouter from './shared/http/health.router.js';
+import sessionRouter from './modules/session/routes/session.routes.js';
 import tenantRouter from './modules/tenant/routes/tenant.routes.js';
-import swaggerRouter from './swagger.routes.js';
-import applicationRouter from './modules/application/routes/application.routes.js';
+import healthRouter from './shared/http/health.router.js';
+import swaggerRouter from './shared/openapi/swagger.routes.js';
 
-import { globalRateLimiter } from './shared/security/middleware/rate-limit.middleware.js';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.js';
+import { globalRateLimiter } from './shared/security/middleware/rate-limit.middleware.js';
 import { Logger } from './shared/utils/logger.js';
 
 export function createApp() {
@@ -23,8 +24,11 @@ export function createApp() {
     throw new Error('CORS_ORIGIN missing in .env');
   }
 
-  // Security headers (CSP, HSTS, X-Content-Type-Options, etc.)
-  app.use(helmet());
+  // Security headers (HSTS, X-Content-Type-Options, etc.). CSP is
+  // disabled because Swagger UI (mounted below at /api/docs) needs
+  // inline scripts/styles to render; this is an API service with no
+  // other browser-rendered surface, so the trade-off is acceptable.
+  app.use(helmet({ contentSecurityPolicy: false }));
 
   app.use(
     cors({
@@ -60,6 +64,7 @@ export function createApp() {
   app.use('/api/v1', roleRouter);
   app.use('/api/v1', tenantRouter);
   app.use('/api/v1', applicationRouter);
+  app.use('/api/v1', sessionRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

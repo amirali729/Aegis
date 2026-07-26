@@ -5,6 +5,7 @@ import type { VerifyEmailDto } from '../../dto/verify-email.dto.js';
 import type { ResendVerificationDto } from '../../dto/resend-verification.dto.js';
 import type { ForgotPasswordDto } from '../../dto/forgot-password.dto.js';
 import type { ResetPasswordDto } from '../../dto/reset-password.dto.js';
+import type { DeviceInfo } from '../../../session/service/interface/session.service.interface.js';
 
 import type {
   ChangePasswordResult,
@@ -21,11 +22,11 @@ import type {
 export interface IAuthService {
   signUp(dto: SignUpDto): Promise<SignUpResult>;
 
-  login(dto: LoginDto): Promise<LoginResult>;
+  login(dto: LoginDto, deviceInfo: DeviceInfo): Promise<LoginResult>;
 
   changePassword(userId: string, dto: ChangePasswordDto): Promise<ChangePasswordResult>;
 
-  logout(userId: string): Promise<LogoutResult>;
+  logout(userId: string, refreshToken?: string): Promise<LogoutResult>;
 
   logoutAll(userId: string): Promise<LogoutResult>;
 

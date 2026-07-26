@@ -1,15 +1,15 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
-import type { IAuthController } from './interface/auth.controller.interface.js';
 import type { IAuthService } from '../service/interface/auth.service.interface.js';
+import type { IAuthController } from './interface/auth.controller.interface.js';
 
-import { SignUpDto } from '../dto/signup.dto.js';
-import { LoginDto } from '../dto/login.dto.js';
 import { ChangePasswordDto } from '../dto/change-password.dto.js';
-import { VerifyEmailDto } from '../dto/verify-email.dto.js';
-import { ResendVerificationDto } from '../dto/resend-verification.dto.js';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto.js';
+import { LoginDto } from '../dto/login.dto.js';
+import { ResendVerificationDto } from '../dto/resend-verification.dto.js';
 import { ResetPasswordDto } from '../dto/reset-password.dto.js';
+import { SignUpDto } from '../dto/signup.dto.js';
+import { VerifyEmailDto } from '../dto/verify-email.dto.js';
 
 import type {
   ChangePasswordResult,
@@ -23,10 +23,10 @@ import type {
   VerifyEmailResult,
 } from '../types/auth.types.js';
 
-import { InvalidTokenError } from '../errors/invalid-token.error.js';
 import { err } from '../../../shared/result/result.js';
+import { InvalidTokenError } from '../errors/invalid-token.error.js';
 
-import { setAuthCookies, clearAuthCookies } from '../../../shared/http/cookies.js';
+import { clearAuthCookies, setAuthCookies } from '../../../shared/http/cookies.js';
 
 export class AuthController implements IAuthController {
   constructor(private readonly service: IAuthService) {}
@@ -40,7 +40,10 @@ export class AuthController implements IAuthController {
   async login(req: Request, res: Response, _next: NextFunction): Promise<LoginResult> {
     const dto = new LoginDto(req.body.username, req.body.password);
 
-    const result = await this.service.login(dto);
+    const result = await this.service.login(dto, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
 
     if (!result.ok) {
       return result;
@@ -66,7 +69,7 @@ export class AuthController implements IAuthController {
   }
 
   async logout(req: Request, res: Response, _next: NextFunction): Promise<LogoutResult> {
-    const result = await this.service.logout(req.user._id.toString());
+    const result = await this.service.logout(req.user._id.toString(), req.cookies?.refreshToken);
 
     if (!result.ok) {
       return result;
@@ -82,7 +85,7 @@ export class AuthController implements IAuthController {
     res: Response,
     _next: NextFunction,
   ): Promise<RefreshTokenResult> {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.body?.refreshToken ?? req.cookies?.refreshToken;
 
     if (!refreshToken) {
       return err(new InvalidTokenError());
