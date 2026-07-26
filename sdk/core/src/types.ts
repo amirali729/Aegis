@@ -100,3 +100,24 @@ export interface ApiKeyCreated extends ApiKey {
   key: string;
   warning: string;
 }
+
+export interface AuditLog {
+  id: string;
+  actorId?: string;
+  actorType: 'user' | 'system' | 'api_key';
+  action: string;
+  success: boolean;
+  targetType?: string;
+  targetId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AuditLogList {
+  logs: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+}

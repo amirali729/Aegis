@@ -7,6 +7,8 @@ export type {
   ApiKeyCreated,
   Application,
   ApplicationCreated,
+  AuditLog,
+  AuditLogList,
   ErrorEnvelope,
   LoginResult,
   Permission,
@@ -20,6 +22,7 @@ export type {
 
 export type { CreateApiKeyInput } from './modules/api-keys.js';
 export type { CreateApplicationInput, UpdateApplicationInput } from './modules/applications.js';
+export type { ListAuditLogsInput } from './modules/audits.js';
 export type {
   ChangePasswordInput,
   LoginInput,

@@ -1,7 +1,7 @@
-import type { CreateRoleDto } from '../../dto/create-role.dto.js';
-import type { UpdateRoleDto } from '../../dto/update-role.dto.js';
-import type { SetRolePermissionsDto } from '../../dto/set-role-permissions.dto.js';
 import type { AssignRoleDto } from '../../dto/assign-role.dto.js';
+import type { CreateRoleDto } from '../../dto/create-role.dto.js';
+import type { SetRolePermissionsDto } from '../../dto/set-role-permission.dto.js';
+import type { UpdateRoleDto } from '../../dto/update-role.dto.js';
 import type {
   AssignRoleResult,
   DeleteRoleResult,

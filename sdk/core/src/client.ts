@@ -1,6 +1,7 @@
 import { HttpClient, type IdentityConfig } from './http-client.js';
 import { ApiKeysModule } from './modules/api-keys.js';
 import { ApplicationsModule } from './modules/applications.js';
+import { AuditModule } from './modules/audits.js';
 import { AuthModule } from './modules/auth.js';
 import { PermissionsModule } from './modules/permissions.js';
 import { RolesModule } from './modules/roles.js';
@@ -17,6 +18,7 @@ export class IdentityClient {
   readonly tenants: TenantsModule;
   readonly applications: ApplicationsModule;
   readonly apiKeys: ApiKeysModule;
+  readonly audit: AuditModule;
 
   constructor(config: IdentityConfig) {
     this.http = new HttpClient(config);
@@ -28,6 +30,7 @@ export class IdentityClient {
     this.tenants = new TenantsModule(this.http);
     this.applications = new ApplicationsModule(this.http);
     this.apiKeys = new ApiKeysModule(this.http);
+    this.audit = new AuditModule(this.http);
   }
 
   /** Switch this client into server-to-server mode using an Application's API key. */

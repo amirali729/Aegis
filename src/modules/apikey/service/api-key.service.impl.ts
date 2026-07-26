@@ -1,21 +1,21 @@
 import { err, ok } from '../../../shared/result/result.js';
 import { hashToken } from '../../../shared/security/hashing/token-hash.js';
+import { ApplicationNotFoundError } from '../../application/errors/application-not-found.error.js';
+import type { IApplicationRepository } from '../../application/repository/interface/application.repository.interface.js';
+import { generateApiKey } from '../../application/service/credential-generator.js';
 import type { CreateApiKeyDto } from '../dto/create-api-key.dto.js';
-import { ApplicationNotFoundError } from '../../appplication/errors/application-not-found.error.js';
 import { ApiKeyNotFoundError } from '../errors/api-key-not-found.error.js';
 import { InvalidApiKeyError } from '../errors/invalid-api-key.error.js';
 import type { IApiKeyRepository } from '../repository/interface/apikey.repository.interface.js';
-import type { IApplicationRepository } from '../../application/repository/application.repository.interface.js';
+import { ApiKeyCreatedResponse } from '../responses/api-key-created.response.js';
 import type {
   ApiKeyCreatedResult,
   ApiKeyListResult,
   RevokeApiKeyResult,
   VerifyApiKeyResult,
 } from '../types/api-key.types.js';
-import type { IApiKeyService } from './interface/api-key.service.interface.js';
-import { generateApiKey } from '../../application/service/credential-generator.js';
 import { toApiKeyResponse } from './api-key.mapper.js';
-import { ApiKeyCreatedResponse } from '../responses/api-key-created.response.js';
+import type { IApiKeyService } from './interface/api-key.service.interface.js';
 
 export class ApiKeyService implements IApiKeyService {
   constructor(
