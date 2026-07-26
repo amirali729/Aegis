@@ -1,69 +1,27 @@
-// import type { Request, Response, NextFunction } from 'express';
-// import type { IApplicationController } from './interface/application.controller.interface.js';
-// import type { IApplicationService } from '../service/interface/application.service.interface.js';
-// import { CreateApplicationDto } from '../dto/create-application.dto.js';
-// import { UpdateApplicationDto } from '../dto/update-application.dto.js';
-// import type {
-//   ApplicationCreatedResult,
-//   ApplicationListResult,
-//   ApplicationResult,
-//   DeleteApplicationResult,
-//   RegenerateSecretResult,
-// } from '../types/application.types.js';
+import type { Request, Response, NextFunction } from 'express';
+import type { IApiKeyController } from './interface/api-key.controller.interface.js';
+import type { IApiKeyService } from '../service/interface/api-key.service.interface.js';
+import { CreateApiKeyDto } from '../dto/create-api-key.dto.js';
+import type {
+  ApiKeyCreatedResult,
+  ApiKeyListResult,
+  RevokeApiKeyResult,
+} from '../types/api-key.types.js';
 
-// export class ApplicationController implements IApplicationController {
-//   constructor(private readonly service: IApplicationService) {}
+export class ApiKeyController implements IApiKeyController {
+  constructor(private readonly service: IApiKeyService) {}
 
-//   async list(req: Request, _res: Response, _next: NextFunction): Promise<ApplicationListResult> {
-//     return this.service.list(req.tenantId);
-//   }
+  async list(req: Request, _res: Response, _next: NextFunction): Promise<ApiKeyListResult> {
+    return this.service.list(req.params.appId as string);
+  }
 
-//   async getById(req: Request, _res: Response, _next: NextFunction): Promise<ApplicationResult> {
-//     return this.service.getById(req.params.id as string);
-//   }
+  async create(req: Request, _res: Response, _next: NextFunction): Promise<ApiKeyCreatedResult> {
+    const dto = new CreateApiKeyDto(req.body.name, req.body.expiresInDays);
 
-//   async create(
-//     req: Request,
-//     _res: Response,
-//     _next: NextFunction,
-//   ): Promise<ApplicationCreatedResult> {
-//     const dto = new CreateApplicationDto(
-//       req.body.name,
-//       req.body.allowedOrigins ?? [],
-//       req.body.redirectUris ?? [],
-//       req.body.accessTokenTTL ?? '15m',
-//       req.body.refreshTokenTTL ?? '7d',
-//     );
+    return this.service.create(req.params.appId as string, dto);
+  }
 
-//     return this.service.create(dto, req.tenantId);
-//   }
-
-//   async update(req: Request, _res: Response, _next: NextFunction): Promise<ApplicationResult> {
-//     const dto = new UpdateApplicationDto(
-//       req.body.name,
-//       req.body.allowedOrigins,
-//       req.body.redirectUris,
-//       req.body.accessTokenTTL,
-//       req.body.refreshTokenTTL,
-//       req.body.isActive,
-//     );
-
-//     return this.service.update(req.params.id as string, dto);
-//   }
-
-//   async delete(
-//     req: Request,
-//     _res: Response,
-//     _next: NextFunction,
-//   ): Promise<DeleteApplicationResult> {
-//     return this.service.delete(req.params.id as string);
-//   }
-
-//   async regenerateSecret(
-//     req: Request,
-//     _res: Response,
-//     _next: NextFunction,
-//   ): Promise<RegenerateSecretResult> {
-//     return this.service.regenerateSecret(req.params.id as string);
-//   }
-// }
+  async revoke(req: Request, _res: Response, _next: NextFunction): Promise<RevokeApiKeyResult> {
+    return this.service.revoke(req.params.appId as string, req.params.keyId as string);
+  }
+}
