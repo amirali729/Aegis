@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { auditService } from '../../audit/routes/audit.router.js';
-import { createMailer } from '../../email/mailer-factory.js';
+import { createMailer } from '../../email/mailer.facotry.js';
 import { DefaultRoleProvider } from '../../role/service/default-role-provider.impl.js';
 import { SessionRepository } from '../../session/repository/session.repository.impl.js';
 import { SessionService } from '../../session/service/session.service.impl.js';
