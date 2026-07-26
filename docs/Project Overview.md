@@ -1,4 +1,4 @@
-# Identity Platform
+# Aegis
 
 > Version: 1.0
 >
@@ -30,7 +30,7 @@
 
 # 1. Introduction
 
-Identity Platform is a modern authentication and authorization system built using Express.js and TypeScript.
+**Aegis** is a modern authentication and authorization system built using Express.js and TypeScript.
 
 The goal is to provide developers with a complete identity solution so they no longer need to build authentication from scratch for every project.
 
@@ -62,7 +62,9 @@ The platform should work for:
 
 # 2. Vision
 
-The long-term vision is to build an open identity platform similar to:
+<!-- The long-term vision is to build an open identity platform similar to: -->
+
+The long-term vision is to make Aegis Identity Platfrom similar to:
 
 - Clerk
 - Auth0
@@ -713,7 +715,7 @@ Hosted SaaS Platform
 
 # Conclusion
 
-The Identity Platform aims to become a complete authentication and authorization solution that can be deployed as either:
+The Aegis aims to become a complete authentication and authorization solution that can be deployed as either:
 
 - Hosted SaaS
 
@@ -723,4 +725,4 @@ or
 
 while sharing a single codebase.
 
-The platform focuses exclusively on Identity and Access Management, allowing customer applications to remain responsible for their own business logic and domain models.
+The Aegis focuses exclusively on Identity and Access Management, allowing customer applications to remain responsible for their own business logic and domain models.
