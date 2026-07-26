@@ -346,6 +346,39 @@ export const openapiComponents = {
       ],
     },
 
+    AuditLog: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        actorId: { type: 'string', nullable: true },
+        actorType: { type: 'string', enum: ['user', 'system', 'api_key'] },
+        action: { type: 'string', example: 'auth.login' },
+        success: { type: 'boolean' },
+        targetType: { type: 'string', nullable: true },
+        targetId: { type: 'string', nullable: true },
+        ipAddress: { type: 'string', nullable: true },
+        userAgent: { type: 'string', nullable: true },
+        metadata: { type: 'object', nullable: true, additionalProperties: true },
+        createdAt: { type: 'string', format: 'date-time' },
+      },
+    },
+
+    Session: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        deviceName: { type: 'string', example: 'Chrome on macOS' },
+        userAgent: { type: 'string', nullable: true },
+        ipAddress: { type: 'string', nullable: true },
+        lastActiveAt: { type: 'string', format: 'date-time' },
+        createdAt: { type: 'string', format: 'date-time' },
+        isCurrent: {
+          type: 'boolean',
+          description: 'True if this is the session making the current request.',
+        },
+      },
+    },
+
     CreateApiKeyRequest: {
       type: 'object',
       required: ['name'],

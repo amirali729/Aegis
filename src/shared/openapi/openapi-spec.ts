@@ -1,10 +1,12 @@
 import { openapiComponents } from './component.js';
-import { authPaths } from '../../modules/auth/docs/auth.paths.js';
-import { permissionPaths } from '../../modules/permission/docs/permission.paths.js';
-import { rolePaths } from '../../modules/role/docs/role.paths.js';
-import { tenantPaths } from '../../modules/tenant/docs/tenant.paths.js';
-import { applicationPaths } from '../../modules/apikey/docs/apikey.paths.js';
-import { healthPaths } from '../http/health.paths.js';
+import { applicationPaths } from './docs/application.docs.js';
+import { auditPaths } from './docs/audit.docs.js';
+import { authPaths } from './docs/auth.docs.js';
+import { healthPaths } from './docs/health.docs.js';
+import { permissionPaths } from './docs/permission.docs.js';
+import { rolePaths } from './docs/role.docs.js';
+import { sessionPaths } from './docs/session.docs.js';
+import { tenantPaths } from './docs/tenant.docs.js';
 
 export function buildOpenApiSpec() {
   const port = process.env.PORT ?? '5000';
@@ -24,6 +26,7 @@ export function buildOpenApiSpec() {
     servers: [{ url: `http://localhost:${port}`, description: 'Local' }],
     tags: [
       { name: 'Auth', description: 'Signup, login, sessions, password/email flows' },
+      { name: 'Sessions', description: 'Multi-device session listing and revocation' },
       { name: 'Permissions', description: 'RBAC building blocks (resource:action)' },
       { name: 'Roles', description: 'Named permission bundles, assignable to users' },
       { name: 'Tenants', description: 'Hosted SaaS customer isolation (MULTI_TENANT=true)' },
@@ -32,6 +35,7 @@ export function buildOpenApiSpec() {
         description: 'Registered consuming apps and their OAuth-style credentials',
       },
       { name: 'API Keys', description: 'Server-to-server credentials scoped to an Application' },
+      { name: 'Audit', description: 'Append-only security event log' },
       { name: 'Health', description: 'Operational endpoints' },
     ],
     security: [{ cookieAuth: [] }, { bearerAuth: [] }],
@@ -39,6 +43,8 @@ export function buildOpenApiSpec() {
     paths: {
       ...healthPaths,
       ...authPaths,
+      ...sessionPaths,
+      ...auditPaths,
       ...permissionPaths,
       ...rolePaths,
       ...tenantPaths,
