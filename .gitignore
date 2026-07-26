@@ -122,3 +122,5 @@ dist
 .DS_Store
 .vscode
 setting.json
+
+node_modules
