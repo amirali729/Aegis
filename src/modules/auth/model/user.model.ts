@@ -23,13 +23,10 @@ export interface IUser extends Document {
   emailVerificationExpiry?: Date;
   passwordResetToken?: string;
   passwordResetExpiry?: Date;
-  refreshToken?: string;
-  tokenVersion: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;
   isPasswordCorrect(password: string): Promise<boolean>;
   generateAccessToken(): string;
-  generateRefreshToken(): string;
   /**
    * Generates a raw (unhashed) email verification token, persists only
    * its hash + expiry on the document, and returns the raw token so the
@@ -67,13 +64,6 @@ const userSchema: Schema = new mongoose.Schema(
     fullName: {
       type: String,
       trim: true,
-    },
-    refreshToken: {
-      type: String,
-    },
-    tokenVersion: {
-      type: Number,
-      default: 0,
     },
     roles: {
       type: [
@@ -113,18 +103,6 @@ userSchema.methods.generateAccessToken = function () {
     process.env.ACCESS_TOKEN_SECRET as string,
     {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRY as SignOptions['expiresIn'],
-    },
-  );
-};
-
-userSchema.methods.generateRefreshToken = function () {
-  return jwt.sign(
-    {
-      _id: this._id,
-    },
-    process.env.ACCESS_REFRESH_SECRET as jwt.Secret,
-    {
-      expiresIn: process.env.ACCESS_REFRESH_EXPIRY as SignOptions['expiresIn'],
     },
   );
 };

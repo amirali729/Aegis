@@ -1,4 +1,3 @@
-import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
 import { err, ok } from '../../../shared/result/result.js';
@@ -6,10 +5,6 @@ import { ValidationError } from '../../../shared/errors/validation.error.js';
 import { hashToken } from '../../../shared/security/hashing/token-hash.js';
 
 import type { IMailer } from '../../email/mailer.interface.js';
-// import {
-//   buildPasswordResetEmail,
-//   buildVerificationEmail,
-// } from "../../email/templates/auth-emails.js";
 import {
   buildPasswordResetEmail,
   buildVerificationEmail,
@@ -18,8 +13,15 @@ import {
 import type { IAuthRepository } from '../repository/interface/auth.repository.interface.js';
 import type { IAuthService } from './interface/auth.service.interface.js';
 import type { IDefaultRoleProvider } from './interface/default-role-provider.interface.js';
-import { generateTokenPair } from './token.service.js';
 import { toUserResponse } from './user.mapper.js';
+
+import type {
+  DeviceInfo,
+  ISessionService,
+} from '../../session/service/interface/session.service.interface.js';
+import type { SessionError } from '../../session/types/session.types.js';
+import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
+import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
 
 import type { ChangePasswordDto } from '../dto/change-password.dto.js';
 import type { LoginDto } from '../dto/login.dto.js';
@@ -36,7 +38,6 @@ import { InvalidTokenError } from '../errors/invalid-token.error.js';
 import { RefreshTokenExpiredError } from '../errors/refresh-token-expired.error.js';
 import { UserNotFoundError } from '../errors/user-not-found.error.js';
 import { InvalidVerificationTokenError } from '../errors/invalid-verification-token.error.js';
-import { EmailAlreadyVerifiedError } from '../errors/email-already-verified.error.js';
 import { InvalidResetTokenError } from '../errors/invalid-reset-token.error.js';
 
 import { ChangePasswordResponse } from '../responses/change-password.response.js';
@@ -50,6 +51,7 @@ import { ForgotPasswordResponse } from '../responses/forgot-password.response.js
 import { ResetPasswordResponse } from '../responses/reset-password.response.js';
 
 import type {
+  AuthError,
   ChangePasswordResult,
   ForgotPasswordResult,
   LoginResult,
@@ -66,7 +68,9 @@ export class AuthService implements IAuthService {
     private readonly repository: IAuthRepository,
     private readonly mailer: IMailer,
     private readonly clientUrl: string,
+    private readonly sessionService: ISessionService,
     private readonly defaultRoleProvider?: IDefaultRoleProvider,
+    private readonly auditLogger?: IAuditLogger,
   ) {}
 
   async signUp(dto: SignUpDto): Promise<SignUpResult> {
@@ -114,10 +118,21 @@ export class AuthService implements IAuthService {
       ),
     );
 
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'auth.signup',
+        true,
+        user._id.toString(),
+        'user',
+        'user',
+        user._id.toString(),
+      ),
+    );
+
     return ok(new SignUpResponse(toUserResponse(saved.value)));
   }
 
-  async login(dto: LoginDto): Promise<LoginResult> {
+  async login(dto: LoginDto, deviceInfo: DeviceInfo): Promise<LoginResult> {
     const found = await this.repository.findByUsername(dto.username);
 
     if (!found.ok) {
@@ -125,6 +140,19 @@ export class AuthService implements IAuthService {
     }
 
     if (!found.value) {
+      void this.auditLogger?.record(
+        new RecordAuditEventDto(
+          'auth.login',
+          false,
+          undefined,
+          'user',
+          'user',
+          undefined,
+          deviceInfo.ipAddress,
+          deviceInfo.userAgent,
+          { reason: 'user_not_found', username: dto.username },
+        ),
+      );
       return err(new UserNotFoundError());
     }
 
@@ -133,20 +161,44 @@ export class AuthService implements IAuthService {
     const isPasswordCorrect = await user.isPasswordCorrect(dto.password);
 
     if (!isPasswordCorrect) {
+      void this.auditLogger?.record(
+        new RecordAuditEventDto(
+          'auth.login',
+          false,
+          user._id.toString(),
+          'user',
+          'user',
+          user._id.toString(),
+          deviceInfo.ipAddress,
+          deviceInfo.userAgent,
+          { reason: 'invalid_password' },
+        ),
+      );
       return err(new InvalidPasswordError());
     }
 
-    const { accessToken, refreshToken } = await generateTokenPair(user);
+    const accessToken = user.generateAccessToken();
 
-    const saved = await this.repository.save(user, {
-      validateBeforeSave: false,
-    });
+    const session = await this.sessionService.createSession(user._id.toString(), deviceInfo);
 
-    if (!saved.ok) {
-      return err(saved.error);
+    if (!session.ok) {
+      return err(this.mapSessionError(session.error));
     }
 
-    return ok(new LoginResponse(toUserResponse(saved.value), accessToken, refreshToken));
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'auth.login',
+        true,
+        user._id.toString(),
+        'user',
+        'user',
+        user._id.toString(),
+        deviceInfo.ipAddress,
+        deviceInfo.userAgent,
+      ),
+    );
+
+    return ok(new LoginResponse(toUserResponse(user), accessToken, session.value.rawRefreshToken));
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<ChangePasswordResult> {
@@ -180,56 +232,35 @@ export class AuthService implements IAuthService {
       return err(saved.error);
     }
 
+    void this.auditLogger?.record(
+      new RecordAuditEventDto('auth.password_changed', true, userId, 'user', 'user', userId),
+    );
+
     return ok(new ChangePasswordResponse());
   }
 
-  async logout(userId: string): Promise<LogoutResult> {
-    const found = await this.repository.findById(userId);
+  async logout(userId: string, refreshToken?: string): Promise<LogoutResult> {
+    if (refreshToken) {
+      const revoked = await this.sessionService.revokeByRefreshToken(refreshToken);
 
-    if (!found.ok) {
-      return err(found.error);
-    }
-
-    if (!found.value) {
-      return err(new UserNotFoundError());
-    }
-
-    const user = found.value;
-    user.refreshToken = undefined;
-
-    const saved = await this.repository.save(user, {
-      validateBeforeSave: false,
-    });
-
-    if (!saved.ok) {
-      return err(saved.error);
+      if (!revoked.ok) {
+        return err(this.mapSessionError(revoked.error));
+      }
     }
 
     return ok(new LogoutResponse());
   }
 
   async logoutAll(userId: string): Promise<LogoutResult> {
-    const found = await this.repository.findById(userId);
+    const revoked = await this.sessionService.revokeAllForUser(userId);
 
-    if (!found.ok) {
-      return err(found.error);
+    if (!revoked.ok) {
+      return err(this.mapSessionError(revoked.error));
     }
 
-    if (!found.value) {
-      return err(new UserNotFoundError());
-    }
-
-    const user = found.value;
-    user.tokenVersion++;
-    user.refreshToken = undefined;
-
-    const saved = await this.repository.save(user, {
-      validateBeforeSave: false,
-    });
-
-    if (!saved.ok) {
-      return err(saved.error);
-    }
+    void this.auditLogger?.record(
+      new RecordAuditEventDto('auth.logout_all', true, userId, 'user', 'user', userId),
+    );
 
     return ok(new LogoutResponse('Logged out from all devices.'));
   }
@@ -239,18 +270,13 @@ export class AuthService implements IAuthService {
       return err(new InvalidTokenError());
     }
 
-    let decoded: { _id: string };
+    const rotated = await this.sessionService.rotateSession(refreshToken);
 
-    try {
-      decoded = jwt.verify(refreshToken, process.env.ACCESS_REFRESH_SECRET!) as { _id: string };
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
-        return err(new RefreshTokenExpiredError());
-      }
-      return err(new InvalidTokenError());
+    if (!rotated.ok) {
+      return err(this.mapSessionError(rotated.error));
     }
 
-    const found = await this.repository.findById(decoded._id);
+    const found = await this.repository.findById(rotated.value.userId);
 
     if (!found.ok) {
       return err(found.error);
@@ -260,23 +286,9 @@ export class AuthService implements IAuthService {
       return err(new UserNotFoundError());
     }
 
-    const user = found.value;
+    const accessToken = found.value.generateAccessToken();
 
-    if (user.refreshToken !== refreshToken) {
-      return err(new InvalidTokenError());
-    }
-
-    const tokens = await generateTokenPair(user);
-
-    const saved = await this.repository.save(user, {
-      validateBeforeSave: false,
-    });
-
-    if (!saved.ok) {
-      return err(saved.error);
-    }
-
-    return ok(new RefreshTokenResponse(tokens.accessToken, tokens.refreshToken));
+    return ok(new RefreshTokenResponse(accessToken, rotated.value.rawRefreshToken));
   }
 
   async verifyEmail(dto: VerifyEmailDto): Promise<VerifyEmailResult> {
@@ -317,7 +329,7 @@ export class AuthService implements IAuthService {
     }
 
     // Never reveal whether the email exists, and never re-verify an
-    // already-verified account — but always return the same generic
+    // already-verified account - but always return the same generic
     // success response either way to avoid account enumeration.
     if (found.value && !found.value.isVerified) {
       const user = found.value;
@@ -394,11 +406,6 @@ export class AuthService implements IAuthService {
     user.password = dto.newPassword;
     user.passwordResetToken = undefined;
     user.passwordResetExpiry = undefined;
-    // A password reset should also invalidate every existing session,
-    // the same way logoutAll does, since the old password (and any
-    // stolen refresh token) should no longer be trusted.
-    user.tokenVersion++;
-    user.refreshToken = undefined;
 
     const saved = await this.repository.save(user);
 
@@ -406,6 +413,44 @@ export class AuthService implements IAuthService {
       return err(saved.error);
     }
 
+    // A password reset should also invalidate every existing session,
+    // the same way logoutAll does, since the old password (and any
+    // stolen refresh token) should no longer be trusted.
+    const revoked = await this.sessionService.revokeAllForUser(user._id.toString());
+
+    if (!revoked.ok) {
+      return err(this.mapSessionError(revoked.error));
+    }
+
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'auth.password_reset',
+        true,
+        user._id.toString(),
+        'user',
+        'user',
+        user._id.toString(),
+      ),
+    );
+
     return ok(new ResetPasswordResponse());
+  }
+
+  /**
+   * Translates a SessionError into the equivalent AuthError. Kept as a
+   * boundary-crossing step rather than sharing a discriminated union,
+   * so the session module has no dependency on the auth module at all
+   * (one-directional: auth -> session, never the reverse).
+   */
+  private mapSessionError(error: SessionError): AuthError {
+    switch (error.kind) {
+      case 'session_not_found':
+      case 'invalid_refresh_token':
+        return new InvalidTokenError();
+      case 'session_expired':
+        return new RefreshTokenExpiredError();
+      case 'infrastructure':
+        return error;
+    }
   }
 }
