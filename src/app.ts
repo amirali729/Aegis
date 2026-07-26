@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import applicationRouter from './modules/application/routes/application.routes.js';
+import auditRouter from './modules/audit/routes/audit.routes.js';
 import authRouter from './modules/auth/routes/auth.routes.js';
 import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
@@ -65,6 +66,7 @@ export function createApp() {
   app.use('/api/v1', tenantRouter);
   app.use('/api/v1', applicationRouter);
   app.use('/api/v1', sessionRouter);
+  app.use('/api/v1', auditRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

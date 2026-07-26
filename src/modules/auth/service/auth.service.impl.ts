@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
-import { err, ok } from '../../../shared/result/result.js';
 import { ValidationError } from '../../../shared/errors/validation.error.js';
+import { err, ok } from '../../../shared/result/result.js';
 import { hashToken } from '../../../shared/security/hashing/token-hash.js';
 
 import type { IMailer } from '../../email/mailer.interface.js';
@@ -13,42 +13,42 @@ import {
 import type { IAuthRepository } from '../repository/interface/auth.repository.interface.js';
 import type { IAuthService } from './interface/auth.service.interface.js';
 import type { IDefaultRoleProvider } from './interface/default-role-provider.interface.js';
-import { toUserResponse } from './user.mapper.js';
+import { toUserResponse } from './user-mapper.js';
 
+import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
+import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
 import type {
   DeviceInfo,
   ISessionService,
 } from '../../session/service/interface/session.service.interface.js';
 import type { SessionError } from '../../session/types/session.types.js';
-import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
-import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
 
 import type { ChangePasswordDto } from '../dto/change-password.dto.js';
+import type { ForgotPasswordDto } from '../dto/forgot-password.dto.js';
 import type { LoginDto } from '../dto/login.dto.js';
+import type { ResendVerificationDto } from '../dto/resend-verification.dto.js';
+import type { ResetPasswordDto } from '../dto/reset-password.dto.js';
 import type { SignUpDto } from '../dto/signup.dto.js';
 import type { VerifyEmailDto } from '../dto/verify-email.dto.js';
-import type { ResendVerificationDto } from '../dto/resend-verification.dto.js';
-import type { ForgotPasswordDto } from '../dto/forgot-password.dto.js';
-import type { ResetPasswordDto } from '../dto/reset-password.dto.js';
 
 import { EmailAlreadyExistsError } from '../errors/email-already-exists.error.js';
-import { UsernameAlreadyExistsError } from '../errors/username-already-exists.error.js';
 import { InvalidPasswordError } from '../errors/invalid-password.error.js';
+import { InvalidResetTokenError } from '../errors/invalid-reset-token.error.js';
 import { InvalidTokenError } from '../errors/invalid-token.error.js';
+import { InvalidVerificationTokenError } from '../errors/invalid-verification-token.error.js';
 import { RefreshTokenExpiredError } from '../errors/refresh-token-expired.error.js';
 import { UserNotFoundError } from '../errors/user-not-found.error.js';
-import { InvalidVerificationTokenError } from '../errors/invalid-verification-token.error.js';
-import { InvalidResetTokenError } from '../errors/invalid-reset-token.error.js';
+import { UsernameAlreadyExistsError } from '../errors/username-already-exists.error.js';
 
 import { ChangePasswordResponse } from '../responses/change-password.response.js';
+import { ForgotPasswordResponse } from '../responses/forgot-password.response.js';
 import { LoginResponse } from '../responses/login.response.js';
 import { LogoutResponse } from '../responses/logout.response.js';
 import { RefreshTokenResponse } from '../responses/RefreshTokenResponse.js';
+import { ResendVerificationResponse } from '../responses/resend-verification.response.js';
+import { ResetPasswordResponse } from '../responses/reset-password.response.js';
 import { SignUpResponse } from '../responses/signup.response.js';
 import { VerifyEmailResponse } from '../responses/verify-email.response.js';
-import { ResendVerificationResponse } from '../responses/resend-verification.response.js';
-import { ForgotPasswordResponse } from '../responses/forgot-password.response.js';
-import { ResetPasswordResponse } from '../responses/reset-password.response.js';
 
 import type {
   AuthError,
