@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   backend:
-    container_name: identity-backend
+    container_name: Aegis-backend
 
     build:
       context: ../..
