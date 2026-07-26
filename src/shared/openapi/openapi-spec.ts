@@ -3,7 +3,7 @@ import { authPaths } from '../../modules/auth/docs/auth.paths.js';
 import { permissionPaths } from '../../modules/permission/docs/permission.paths.js';
 import { rolePaths } from '../../modules/role/docs/role.paths.js';
 import { tenantPaths } from '../../modules/tenant/docs/tenant.paths.js';
-// import { applicationPaths } from "./paths/application.paths.js";
+import { applicationPaths } from '../../modules/apikey/docs/apikey.paths.js';
 import { healthPaths } from '../http/health.paths.js';
 
 export function buildOpenApiSpec() {
@@ -42,7 +42,7 @@ export function buildOpenApiSpec() {
       ...permissionPaths,
       ...rolePaths,
       ...tenantPaths,
-      //   ...applicationPaths,
+      ...applicationPaths,
     },
   };
 }
