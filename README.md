@@ -1,4 +1,4 @@
-# Identity Platform
+# Aegis
 
 > A modern, modular, self-hostable and cloud-hosted Authentication & Authorization Platform for developers.
 
@@ -8,7 +8,7 @@
 
 # Overview
 
-Identity Platform is an open-source authentication and authorization service designed to eliminate the need for every project to implement authentication from scratch.
+Aegis is an open-source authentication and authorization service designed to eliminate the need for every project to implement authentication from scratch.
 
 The project is being built with a clean architecture and is designed to support both:
 
@@ -328,102 +328,14 @@ Current and planned protections include:
 
 ---
 
-# Roadmap
-
-## Phase 1
-
-- Clean Architecture
-- Shared Layer
-- Authentication Module
-
-## Phase 2
-
-- Email Verification
-- Password Reset
-- Session Management
-
-## Phase 3
-
-- Authorization Engine
-- Roles
-- Permissions
-
-## Phase 4
-
-- Multi Tenant Support
-
-## Phase 5
-
-- Applications
-- API Keys
-- OAuth Clients
-
-## Phase 6
-
-- React Dashboard
-
-## Phase 7
-
-- Official SDKs
-
-## Phase 8
-
-- Infrastructure
-- Monitoring
-- CI/CD
-
-## Phase 9
-
-- Enterprise Features
-
----
-
-# Current Status
-
-## Completed
-
-- Project Structure
-- Repository Pattern
-- DTO Layer
-- Response Layer
-- Error Handling
-- Result Pattern
-- Authentication Module
-- Login
-- Signup
-- Logout
-- Logout All
-- Change Password
-- Refresh Token
-- Cookie Authentication
-
-## In Progress
-
-- Authentication Hardening
-- Validation
-- Security Improvements
-
-## Planned
-
-- Authorization
-- Organizations
-- Multi Tenant
-- Dashboard
-- SDKs
-- OAuth
-- Infrastructure
-- Enterprise Features
-
----
-
 # Getting Started
 
 ## Clone
 
 ```bash
-git clone https://github.com/<username>/identity-platform.git
+git clone https://github.com/<username>/Aegis.git
 
-cd identity-platform
+cd Aegis
 ```
 
 ---

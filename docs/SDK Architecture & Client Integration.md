@@ -1,4 +1,4 @@
-# Identity Platform
+# Aegis
 
 > Version: 1.0
 >
