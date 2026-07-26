@@ -9,6 +9,7 @@ import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
 import healthRouter from './shared/http/health.router.js';
 import tenantRouter from './modules/tenant/routes/tenant.routes.js';
+import applicationRouter from './modules/application/routes/application.routes.js';
 
 import { globalRateLimiter } from './shared/security/middleware/rate-limit.middleware.js';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.js';
@@ -56,6 +57,7 @@ export function createApp() {
   app.use('/api/v1', permissionRouter);
   app.use('/api/v1', roleRouter);
   app.use('/api/v1', tenantRouter);
+  app.use('/api/v1', applicationRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
