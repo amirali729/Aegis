@@ -24,6 +24,7 @@ export const DEFAULT_PERMISSIONS: Array<{
   { key: 'apikey:view', description: 'View API keys (metadata only).' },
   { key: 'apikey:create', description: 'Create API keys.' },
   { key: 'apikey:delete', description: 'Revoke API keys.' },
+  { key: 'audit:view', description: 'View audit logs.' },
 ];
 
 export const DEFAULT_ROLES: Array<{
