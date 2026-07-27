@@ -1,8 +1,8 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Core Platform Implemented (Auth, Sessions, RBAC, Multi-Tenancy foundation, Applications & API Keys, Audit Log, Email, SDK core, OpenAPI docs) - Dashboard and framework SDKs not yet started.
 >
 > Author: Amir Ali
 >
@@ -382,8 +382,11 @@ Both deployment models use the same codebase.
 - Login
 - Logout
 - Logout All
-- Refresh Tokens
+- Session Management (multi-device, list/revoke)
+- Refresh Tokens (opaque, hashed, rotated)
 - Change Password
+- Forgot / Reset Password
+- Email Verification
 
 ---
 
@@ -391,7 +394,18 @@ Both deployment models use the same codebase.
 
 - Roles
 - Permissions
-- Policies
+- Role & Permission assignment
+- Route protection middleware (`requirePermission`)
+
+Future: Policies (ABAC)
+
+---
+
+## Multi-Tenancy & Applications
+
+- Tenants (Hosted SaaS customer isolation, opt-in via `MULTI_TENANT`)
+- Applications (client credentials)
+- API Keys (server-to-server auth via `X-API-Key`)
 
 ---
 
@@ -402,6 +416,7 @@ Both deployment models use the same codebase.
 - Cookie Authentication
 - Password Hashing
 - Session Management
+- Audit Log
 
 ---
 
@@ -417,12 +432,16 @@ GraphQL (optional)
 
 ## SDK
 
+`@identity-platform/core` - framework-agnostic TypeScript client, done.
+
 Future SDKs
 
-- TypeScript
-- JavaScript
-- Python
-- Go
+- React
+- Next.js
+- Node/Express helpers
+- NestJS
+- Vue
+- Angular
 
 ---
 
@@ -437,6 +456,7 @@ For:
 - Roles
 - Sessions
 - API Keys
+- Audit Log
 
 ---
 
@@ -482,9 +502,9 @@ Future
 
 ## Authentication
 
-JWT
+JWT (access tokens)
 
-Refresh Tokens
+Opaque, hashed, rotating session tokens (refresh tokens - see Session module)
 
 HTTP Only Cookies
 
@@ -592,124 +612,88 @@ MySQL
 
 Completed
 
-✅ Project Structure
+✅ Project Structure (feature-based modules)
 
-✅ Authentication Module
+✅ Authentication Module (signup, login, logout, logout-all, change password, forgot/reset password, email verification, resend verification)
 
-✅ DTO Pattern
+✅ Session Management (multi-device sessions replace the old single refresh-token field; refresh tokens are opaque, hashed, and rotated on every use)
 
-✅ Repository Pattern
+✅ Authorization / RBAC (Permissions, Roles, permission assignment, user-role assignment, `requirePermission` middleware, permission evaluation)
 
-✅ Controller Pattern
+✅ Multi-Tenancy foundation (Tenant model and CRUD, `resolveTenant` middleware, `MULTI_TENANT` toggle, Applications are genuinely tenant-scoped)
 
-✅ Result Pattern
+✅ Applications & API Keys (client credentials with hashed secrets, API keys with hashed storage and visible prefixes, `X-API-Key` auth middleware)
 
-✅ Response Pattern
+✅ Audit Log (append-only security event log, admin-facing listing endpoint; currently wired into auth events - login, logout-all, password change/reset, signup)
 
-✅ Error Pattern
+✅ Email (Nodemailer for real SMTP delivery, Console mailer fallback for local dev, verification and password-reset templates)
 
-✅ JWT
+✅ DTO Pattern, Repository Pattern, Service Layer, Controller Pattern, Result Pattern, Response Pattern, Error Pattern
 
-✅ Refresh Tokens
+✅ Request validation (Zod) on every route
 
-✅ Login
+✅ Security hardening (helmet, rate limiting, centralized error handling, health check endpoint)
 
-✅ Signup
+✅ OpenAPI / Swagger documentation (`/api/docs`), served with Try-it-out support
 
-✅ Logout
+✅ Core SDK package (`@identity-platform/core`) - typed client with automatic token refresh, covering every module above
 
-✅ Logout All
-
-✅ Refresh Token
-
-✅ Change Password
+✅ Docker Compose for local/self-hosted development
 
 ---
 
-In Progress
+In Progress / Partial
 
-- User Mapper
-- Token Improvements
-- Better Repository Abstraction
+- Multi-tenant data isolation only fully applies to Applications today - Users, Roles, Permissions, and Audit Log are not yet tenant-scoped
+- Audit logging only covers auth events - role/permission/application/API-key/tenant changes are not yet recorded
+- `allowedOrigins` / `redirectUris` on Application are stored but not yet enforced by any flow (no OAuth authorize/redirect endpoint exists yet)
 
 ---
 
 Not Started
 
-- Email Verification
-- Forgot Password
-- Roles
-- Permissions
-- Dashboard
-- SDK
-- Multi Database
-- Multi Tenant
-- OAuth
+- Admin Dashboard (web UI)
+- Framework-specific SDKs (React, Next.js, Node/Express helpers, NestJS, Vue, Angular) - only the framework-agnostic core SDK exists
+- OAuth / social login
+- Magic Links
+- Multi-Factor Authentication
+- Multi-database support (PostgreSQL, MySQL) - MongoDB only for now
 - Webhooks
+- Enterprise features (SSO/SAML, org-level billing hooks)
+- Redis caching layer for permission evaluation
+- Kubernetes / production-grade infrastructure (Prometheus, Grafana, reverse proxy)
 
 ---
 
 # 13. Future Roadmap
 
-The project will evolve in stages.
+Phase 1 - Core Authentication ✅ Done
 
-Phase 1
+Phase 2 - Session Management ✅ Done
 
-Core Authentication
+Phase 3 - Authorization (RBAC) ✅ Done
 
-↓
+Phase 4 - Multi-Tenancy foundation ✅ Done (Applications only - full isolation still pending)
 
-Phase 2
+Phase 5 - Applications & API Keys ✅ Done
 
-Authorization
+Phase 6 - Audit Log ✅ Done (auth events only)
 
-↓
+Phase 7 - Email delivery ✅ Done
 
-Phase 3
+Phase 8 - OpenAPI docs & Core SDK ✅ Done
 
-Sessions
+Phase 9 - Pre-deployment hardening (env validation, CORS/credentials config, production Docker profile, graceful shutdown) 🔲 Not started
 
-↓
+Phase 10 - Full multi-tenant data isolation + expanded audit coverage 🔲 Not started
 
-Phase 4
+Phase 11 - Admin Dashboard 🔲 Not started
 
-Email
+Phase 12 - Framework SDKs 🔲 Not started
 
-↓
+Phase 13 - OAuth, Multi-Factor Authentication, Webhooks 🔲 Not started
 
-Phase 5
-
-Applications
-
-↓
-
-Phase 6
-
-API Keys
-
-↓
-
-Phase 7
-
-Dashboard
-
-↓
-
-Phase 8
-
-SDK
-
-↓
-
-Phase 9
-
-Self Hosted Support
-
-↓
-
-Phase 10
-
-Hosted SaaS Platform
+Phase 14 - Multi-database support, Enterprise features, Kubernetes-grade infrastructure 🔲 Not started
 
 ---
 

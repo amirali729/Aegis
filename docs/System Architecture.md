@@ -1,8 +1,8 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Core Platform Implemented (see Project Overview for detailed status)
 >
 > Document: 02 - System Architecture
 
@@ -94,7 +94,7 @@ Route
 
 ↓
 
-Middleware
+Middleware (rate limit, verifyjwt, requirePermission, validate)
 
 ↓
 
@@ -103,6 +103,10 @@ handle()
 ↓
 
 Controller
+
+↓
+
+Service
 
 ↓
 
@@ -121,7 +125,9 @@ The direction never changes.
 
 Controllers never query the database.
 
-Repositories never touch Express.
+Repositories never touch Express, and never contain business rules - they are pure data access, returning `Result<T, InfrastructureError>`.
+
+Services own every business decision (duplicate checks, password verification, token orchestration) and translate repository/dependency failures into domain errors.
 
 Routes never contain business logic.
 
@@ -132,7 +138,7 @@ Routes never contain business logic.
 Example:
 
 ```
-POST /login
+POST /api/v1/auth/login
 ```
 
 Flow
@@ -146,7 +152,11 @@ Express Router
 
 ↓
 
-verifyJwt (if protected)
+authRateLimiter
+
+↓
+
+validate() (Zod schema)
 
 ↓
 
@@ -158,27 +168,39 @@ AuthController.login()
 
 ↓
 
-LoginDto
+LoginDto + DeviceInfo (user agent, IP)
 
 ↓
 
-AuthRepository.login()
+AuthService.login()
 
 ↓
 
-Mongo Repository
+AuthRepository.findByUsername() (pure data access)
 
 ↓
 
-MongoDB
+MongoDB (User)
 
 ↓
 
-Repository returns Result
+SessionService.createSession() (issues opaque, hashed refresh token)
 
 ↓
 
-Controller
+SessionRepository -> MongoDB (Session)
+
+↓
+
+AuditService.record() (best-effort, never blocks the response)
+
+↓
+
+Service returns Result<LoginResponse, AuthError>
+
+↓
+
+Controller sets accessToken/refreshToken cookies on success
 
 ↓
 
@@ -186,7 +208,7 @@ handle()
 
 ↓
 
-BaseResponse
+BaseResponse / BaseErrorResponse
 
 ↓
 
@@ -202,6 +224,9 @@ Routes
    │
    ▼
 Controllers
+   │
+   ▼
+Services
    │
    ▼
 Repositories
@@ -237,27 +262,17 @@ The project is divided into modules.
 Each module owns a single business capability.
 
 ```
-Auth
-
-Role
-
-Permission
-
-Session
-
-Tenant
-
-Application
-
-ApiKey
-
-Email
-
-Webhook
-
-Audit
-
-OAuth
+Auth          - implemented
+Session       - implemented
+Role          - implemented
+Permission    - implemented
+Tenant        - implemented (Applications are tenant-scoped; Users/Roles/Permissions are not yet)
+Application   - implemented
+ApiKey        - implemented
+Email         - implemented (Nodemailer + Console fallback)
+Audit         - implemented (auth events only so far)
+Webhook       - not started
+OAuth         - not started
 ```
 
 Modules communicate through interfaces, not direct implementation details.
@@ -438,17 +453,27 @@ Refresh Expiration
 
 ## API Key Module
 
-Every application receives
+Each application can have zero or more API keys, created on demand (not automatically issued at application creation).
+
+Every key stores
 
 ```
-Client ID
+Name
 
-Client Secret
+Key Prefix (visible, for identification in logs/UI)
 
-API Key
+Hashed Key (SHA-256; the raw key is never stored)
+
+Status (active / revoked)
+
+Expiry (optional)
+
+Last Used At
 ```
 
-Future SDKs authenticate using these credentials.
+The raw key is shown exactly once, at creation time.
+
+The SDK and any server-to-server client authenticate using the `X-API-Key` header.
 
 ---
 
@@ -479,12 +504,14 @@ Owns
 ```
 Email Verification
 
-Forgot Password
-
-Magic Links
+Forgot Password / Reset Password
 
 Templates
 ```
+
+Backed by Nodemailer (real SMTP) when `SMTP_HOST` is configured, falling back to a Console mailer (logs instead of sending) for local development.
+
+Magic Links are not implemented yet.
 
 ---
 
@@ -508,21 +535,23 @@ role.updated
 
 ## Audit Module
 
-Stores
+Append-only log. Currently records:
 
 ```
-Logins
+Login (success and failed attempts)
+
+Signup
 
 Password Changes
 
-Role Changes
+Password Resets
 
-Permission Changes
-
-API Key Generation
-
-Session Revocation
+Logout All
 ```
+
+Not yet recorded (planned): Role/Permission changes, API Key generation/revocation, Application/Tenant changes, individual session revocation.
+
+Exposes `IAuditLogger`, a narrow port other modules depend on to record events without needing the full audit service.
 
 ---
 
@@ -621,7 +650,7 @@ DATABASE_PROVIDER=mysql
 # 10. Security Layer
 
 ```
-JWT
+JWT (access token)
 
 ↓
 
@@ -629,7 +658,15 @@ verifyJwt
 
 ↓
 
+requirePermission (RBAC check, when the route needs one)
+
+↓
+
 Controller
+
+↓
+
+Service
 
 ↓
 
@@ -639,17 +676,19 @@ Repository
 Additional security
 
 ```
-Password Hashing
+Password Hashing (bcrypt)
 
-Refresh Tokens
-
-Token Version
-
-Session Validation
+Opaque, hashed, rotating Session refresh tokens (see Session module - replaces the old single refreshToken/tokenVersion field on User)
 
 HTTP Only Cookies
 
-Rate Limiting (Future)
+Rate Limiting (implemented - tiered: global, auth-specific, sensitive-action; in-memory store, not yet shared across instances)
+
+Helmet security headers
+
+Centralized error handling (no stack traces leaked in production)
+
+Zod request validation on every route
 
 MFA (Future)
 ```

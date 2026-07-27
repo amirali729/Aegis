@@ -1,8 +1,8 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the actual current structure (see Project Overview for implementation status)
 >
 > Document: 03 - Project Folder Structure
 
@@ -65,23 +65,25 @@ spread across the project.
 # 2. Root Directory
 
 ```
-identity-platform/
+Auth_System/
 
 ├── src/
 ├── docs/
-├── docker/
+├── Docker/
 ├── sdk/
-├── scripts/
-├── tests/
-├── .github/
+├── tests/                (empty scaffold - no tests currently ship in this snapshot)
 ├── package.json
 ├── tsconfig.json
-├── docker-compose.yml
-├── Dockerfile
-├── .env.example
-├── README.md
-└── LICENSE
+├── tsconfig.test.json
+├── eslint.config.js
+├── prettier.config.mjs
+├── commitlint.config.js
+└── README.md
 ```
+
+Note: the real `.env` lives at `src/shared/config/.env` (that's the path `server.ts` loads via `dotenv.config()`), not at the project root.
+
+Note: `src/config/`, `src/database/`, and `src/infrastructure/` exist as empty top-level scaffolds. Configuration actually lives in `src/shared/config/`, and the active database connection lives in `src/shared/database/dbconnection.ts` - these top-level folders are reserved for future use (e.g. a real multi-database provider abstraction) but are currently unused.
 
 ---
 
@@ -97,13 +99,11 @@ src/
 
 ├── modules/
 
-├── infrastructure/
+├── bootstrap/
 
-├── database/
-
-├── config/
-
-└── bootstrap/
+├── config/           (empty scaffold - see note above)
+├── database/         (empty scaffold - see note above)
+└── infrastructure/    (empty scaffold - see note above)
 ```
 
 ---
@@ -132,6 +132,22 @@ Responsible for
 
 ---
 
+## bootstrap/
+
+One-off scripts, run via `tsx`, not part of the running server:
+
+```
+bootstrap/
+
+rbac-defaults.ts   - default permission/role catalog
+
+seed-rbac.ts       - upserts the default catalog (npm run seed:rbac)
+
+assign-admin.ts    - grants the Admin role to a user by email (npm run seed:admin -- <email>)
+```
+
+---
+
 # 4. Shared Layer
 
 Everything reusable belongs here.
@@ -139,15 +155,21 @@ Everything reusable belongs here.
 ```
 shared/
 
+├── api-endpoint/
+
 ├── config/
 
 ├── constants/
+
+├── database/
+
+├── email/
 
 ├── errors/
 
 ├── http/
 
-├── logger/
+├── openapi/
 
 ├── response/
 
@@ -164,24 +186,22 @@ shared/
 
 ---
 
-## config/
+## api-endpoint/
 
-Application configuration.
+One file per module, exporting its route-path constants (e.g. `auth.api.endpoint.ts`, `role.api.endpoint.ts`, `application.api.endpoin.ts`\*, `api-key.api.endpoint.ts`, `tenant.api.endpoint.ts`, `permission.api.endpoint.ts`, `session.api.endpoint.ts`, `audit.api.endpoint.ts`).
+
+\* yes, that filename has a typo in the current codebase (`endpoin.ts`, missing the final `t`) - harmless (self-consistent), just cosmetic.
+
+---
+
+## config/
 
 ```
 config/
 
-cookie.ts
+.env            - the real environment file (see note in section 2)
 
-cors.ts
-
-jwt.ts
-
-env.ts
-
-database.ts
-
-mail.ts
+cookie.ts       - COOKIE_OPTIONS (httpOnly, secure, sameSite - currently hardcoded, not read from env)
 ```
 
 ---
@@ -189,35 +209,43 @@ mail.ts
 ## constants/
 
 ```
-HTTP Status
-
-Role Names
-
-Permission Names
-
-Error Codes
-
-Cookie Names
-
-Environment Keys
+http-status.mapper.ts   - currently unused/dead (the active status codes live in shared/http/http-status.ts)
 ```
+
+---
+
+## database/
+
+```
+dbconnection.ts   - the single active Mongoose connection
+```
+
+---
+
+## email/
+
+Currently empty - kept as a placeholder; the real mailer lives in `modules/email/` (see Section 5).
 
 ---
 
 ## errors/
 
 ```
-Base Errors
+error.shape.ts
 
-ValidationError
+conflict.error.ts
 
-UnauthorizedError
+domain.error.ts
 
-ConflictError
+forbidden.error.ts
 
-NotFoundError
+infrastructure.error.ts
 
-InfrastructureError
+not-found.error.ts
+
+unauthorized.error.ts
+
+validation.error.ts
 ```
 
 ---
@@ -225,27 +253,33 @@ InfrastructureError
 ## http/
 
 ```
-handle.ts
+handle.ts             - wraps a controller method's Result<T,E> into an HTTP response; takes the module's own error mapper as a parameter, so it isn't coupled to any one module's error union
 
-http-status.ts
+http-status.ts         - the actual status-code constants in use
 
-map-auth-error.ts
+validate.ts            - Zod-based request validation middleware factory
 
-request-context.ts
+error-handler.ts        - global errorHandler + notFoundHandler, registered last in app.ts
+
+health.router.ts        - GET /health
+
+response.factory.ts     - convenience builders on top of BaseResponse/BaseErrorResponse
 ```
 
 ---
 
-## logger/
-
-Future
+## openapi/
 
 ```
-logger.ts
+openapi/
 
-winston.ts
+component.ts        - shared OpenAPI schemas (entities, request bodies, security schemes)
 
-pino.ts
+openapi-spec.ts      - assembles info/servers/tags/components + every module's paths
+
+swagger.routes.ts     - mounts Swagger UI at /api/docs and raw JSON at /api/docs/openapi.json
+
+docs/                - one *.docs.ts file per module, each exporting that module's path definitions
 ```
 
 ---
@@ -263,7 +297,7 @@ BaseErrorResponse
 ## result/
 
 ```
-Result
+Result<T, E>
 
 ok()
 
@@ -275,58 +309,54 @@ err()
 ## security/
 
 ```
+security/
+
+authorization/
+    permission-evaluator.ts   - unions permissions across a user's roles
+
+context/                       - empty scaffold
+
+hashing/
+    token-hash.ts              - SHA-256 hashing for verification/reset tokens, refresh tokens, API keys
+
+jwt/                            - empty scaffold (JWT signing/verification currently lives on the User model itself and in verifyJwt.middleware.ts)
+
 middleware/
-
-jwt/
-
-password/
-
-csrf/
-
+    verifyJwt.middleware.ts
+    requirePermission.middleware.ts
+    resolveTenant.middleware.ts
+    apiKeyAuth.middleware.ts
+    rate-limit.middleware.ts
 ```
 
 ---
 
 ## types/
 
-Global types
-
 ```
-express.d.ts
+express.d.ts       - augments Request with `user`, `tenantId`, `application`
 
-jwt-payload.ts
-
-pagination.ts
+jwtPayload.d.ts
 ```
 
 ---
 
 ## utils/
 
-Reusable helpers.
-
 ```
-date.ts
+logger.ts       - the actual Logger class in use (console-based; no winston/pino)
 
-string.ts
+duration.ts      - parses "15m"/"7d"-style strings into milliseconds
 
-crypto.ts
-
-random.ts
-
-pagination.ts
+async-handler.ts - currently unused/dead code (handle.ts supersedes it)
 ```
 
 ---
 
 ## validation/
 
-Future validation schemas.
-
 ```
-zod/
-
-class-validator/
+object-id.schema.ts   - the only file actually used across modules; the module-specific request-body schemas live inside each module's own `validation/` folder, not here
 ```
 
 ---
@@ -340,41 +370,56 @@ modules/
 
 auth/
 
-tenant/
-
-application/
+session/
 
 role/
 
 permission/
 
-session/
+tenant/
+
+application/
+
+apikey/       - split out from application/ into its own module
 
 email/
 
-oauth/
-
-apikey/
-
 audit/
 
-webhook/
+oauth/        - empty scaffold, not implemented
+
+webhook/      - empty scaffold, not implemented
 ```
 
-Every module follows the same internal structure.
+Every implemented module follows the same internal structure.
 
 ---
 
 # 6. Module Structure
 
-Example
+Example (auth)
 
 ```
 auth/
 
 controller/
+    auth.controller.impl.ts
+    interface/
+        auth.controller.interface.ts
+
+service/
+    auth.service.impl.ts
+    user-mapper.ts
+    interface/
+        auth.service.interface.ts
 
 repository/
+    auth.repository.impl.ts
+    interface/
+        auth.repository.interface.ts
+
+model/
+    user.model.ts
 
 dto/
 
@@ -382,45 +427,57 @@ responses/
 
 errors/
 
-mapper/
-
-interfaces/
-
 routes/
-
-service/
-
-models/
+    auth.routes.ts
 
 types/
+    auth.types.ts
 
-validators/
+validation/
+    auth.schemas.ts   (Zod schemas)
+
+http/
+    map-auth-error.ts
+
+index.ts   (barrel export)
 ```
+
+Note the folder is `model/` (singular), not `models/`.
 
 ---
 
 ## controller/
 
-Contains only controllers.
+Contains only controllers. Thin - parses the request into a DTO, calls the service, returns the `Result`. No business logic and no direct database access.
 
 ```
-auth.controller.interface.ts
-
 auth.controller.impl.ts
+
+interface/auth.controller.interface.ts
+```
+
+---
+
+## service/
+
+Owns all business logic: duplicate checks, password verification, token orchestration, translating dependency failures into domain errors. This is where business rules live - **not** in the repository.
+
+```
+auth.service.impl.ts
+
+interface/auth.service.interface.ts
 ```
 
 ---
 
 ## repository/
 
-Contains repository implementation.
+Pure data access. No business rules. Every method returns `Result<T, InfrastructureError>` - the only error a repository can produce is "the database could not be reached."
 
 ```
 auth.repository.impl.ts
 
-interface/
-
-auth.repository.interface.ts
+interface/auth.repository.interface.ts
 ```
 
 ---
@@ -434,7 +491,13 @@ login.dto.ts
 
 change-password.dto.ts
 
-refresh-token.dto.ts
+forgot-password.dto.ts
+
+reset-password.dto.ts
+
+verify-email.dto.ts
+
+resend-verification.dto.ts
 ```
 
 ---
@@ -448,7 +511,19 @@ login.response.ts
 
 logout.response.ts
 
-refresh-token.response.ts
+change-password.response.ts
+
+forgot-password.response.ts
+
+reset-password.response.ts
+
+verify-email.response.ts
+
+resend-verification.response.ts
+
+RefreshTokenResponse.ts
+
+user.response.ts
 ```
 
 ---
@@ -458,27 +533,23 @@ refresh-token.response.ts
 ```
 email-already-exists.error.ts
 
+username-already-exists.error.ts
+
 invalid-password.error.ts
 
 user-not-found.error.ts
-```
 
----
+invalid-token.error.ts
 
-## mapper/
+refresh-token-expired.error.ts
 
-```
-user.mapper.ts
-```
+invalid-verification-token.error.ts
 
-Responsible for converting
+email-already-verified.error.ts
 
-```
-Mongo User
+invalid-reset-token.error.ts
 
-↓
-
-UserResponse
+reset-token-expired.error.ts
 ```
 
 ---
@@ -489,51 +560,33 @@ UserResponse
 auth.routes.ts
 ```
 
-Only route registration.
+The composition root: wires the concrete repository/service/controller together, applies validation/rate-limit/auth middleware, and registers routes. Only place in the module that instantiates concrete classes.
 
 ---
 
-## service/
-
-Only reusable services.
-
-Current example
-
-```
-token.service.ts
-```
-
-Avoid putting business logic here.
-
----
-
-## models/
+## model/
 
 ```
 user.model.ts
 ```
 
-Contains only Mongoose schemas.
-
-Later PostgreSQL implementation will not use these.
+Contains only the Mongoose schema. A future PostgreSQL/MySQL implementation would not use this file.
 
 ---
 
-## validators/
-
-Future
+## validation/
 
 ```
-signup.validator.ts
-
-login.validator.ts
+auth.schemas.ts
 ```
+
+Zod schemas used by `shared/http/validate.ts` middleware.
 
 ---
 
 ## types/
 
-Module-specific types.
+Module-specific result/error union types.
 
 ```
 auth.types.ts
@@ -543,205 +596,122 @@ auth.types.ts
 
 # 7. Infrastructure
 
-Infrastructure contains external integrations.
+`src/infrastructure/` exists as an empty top-level scaffold today - reserved for future external integrations (cache, object storage, queues, monitoring) once they're actually built.
+
+The one external integration that _is_ implemented today - email delivery - lives inside `modules/email/`, not a top-level `infrastructure/` folder:
+
+```
+modules/email/
+
+mailer.interface.ts     - IMailer contract
+
+console.mailer.ts        - dev fallback, logs instead of sending
+
+nodemailer.mailer.ts     - real SMTP delivery
+
+mailer.factory.ts        - picks Console vs Nodemailer based on SMTP_HOST
+
+templates/
+    auth-emails.ts        - verification + password-reset email content
+```
+
+Future, once built, would live under `infrastructure/`:
 
 ```
 infrastructure/
 
-mail/
+cache/       - Redis
 
-cache/
+storage/     - S3 / MinIO
 
-storage/
+queue/       - background jobs
 
-queue/
-
-monitoring/
-```
-
----
-
-## mail/
-
-```
-smtp.provider.ts
-
-resend.provider.ts
-
-sendgrid.provider.ts
-```
-
----
-
-## cache/
-
-Future
-
-```
-redis.ts
-```
-
----
-
-## storage/
-
-Future object storage.
-
-```
-s3.ts
-
-minio.ts
-```
-
----
-
-## queue/
-
-Future background jobs.
-
-```
-bullmq.ts
-```
-
----
-
-## monitoring/
-
-```
-metrics.ts
-
-health.ts
+monitoring/  - metrics, health
 ```
 
 ---
 
 # 8. Database
 
-The storage layer is isolated.
+`src/database/` exists as an empty top-level scaffold today. There is currently no cross-database provider abstraction (no `DATABASE_PROVIDER` env var, no `postgres`/`mysql` implementations) - every module's repository talks to its own Mongoose model directly (e.g. `modules/auth/model/user.model.ts`, `modules/role/model/role.model.ts`).
+
+Repositories are still written against an interface (`IAuthRepository`, `IRoleRepository`, etc.), so a future non-Mongo implementation would only need to implement that interface - the multi-database story is architecturally possible, just not built yet.
+
+Planned future structure (not implemented):
 
 ```
 database/
 
-provider/
+provider/     - interfaces
 
-mongodb/
+mongodb/      - current implementation, today lives per-module instead
 
-postgres/
+postgres/     - future
 
-mysql/
+mysql/        - future
 ```
 
----
-
-## provider/
-
-Contains interfaces.
-
-```
-user.repository.ts
-
-role.repository.ts
-
-permission.repository.ts
-```
-
-Business logic depends on these interfaces.
-
----
-
-## mongodb/
-
-Mongo implementation.
-
-```
-user.repository.ts
-
-role.repository.ts
-
-session.repository.ts
-```
-
----
-
-## postgres/
-
-Future PostgreSQL implementation.
-
----
-
-## mysql/
-
-Future MySQL implementation.
+Selection would happen through configuration, e.g. `DATABASE_PROVIDER=mongodb`.
 
 ---
 
 # 9. SDK
 
-Future SDKs.
-
 ```
 sdk/
 
-typescript/
+core/     - @identity-platform/core, implemented. Framework-agnostic TypeScript client:
+              automatic auth, automatic silent token refresh (retries the original
+              request once after a 401), and a typed module per backend module
+              (auth, sessions, permissions, roles, tenants, applications, apiKeys, audit).
 
-javascript/
-
-python/
-
-go/
+react/    - empty scaffold, not implemented
 ```
 
-These SDKs consume the public REST API.
+Future SDKs (not started): `next/`, `node/`, `nest/`, `vue/`, `angular/`.
 
-They never access the database.
+These SDKs consume the public REST API only. They never access the database directly.
 
 ---
 
 # 10. Docker
 
 ```
-docker/
+Docker/
 
-development/
+development/    - implemented: docker-compose.yml, Dockerfile, .env.example, README.md,
+                    plus mongo/run.sh + mongo/stop.sh for running just a standalone Mongo container
 
-production/
+production/      - empty scaffold, not implemented
 
-kubernetes/
+kubernetes/       - empty scaffold, not implemented
 ```
+
+Note the folder is `Docker/` (capital D).
 
 ---
 
 ## development/
 
 ```
-docker-compose.dev.yml
+docker-compose.yml   - backend + MongoDB (with auth), healthchecks
 
-mongodb/
+Dockerfile            - multi-stage build (compile TS, then run only prod deps + dist)
 
-redis/
+.env.example          - copy to .env before running docker compose
+
+README.md
+
+mongo/
+    run.sh   - run a standalone Mongo container without the full compose
+    stop.sh
 ```
 
 ---
 
-## production/
+## production/ and kubernetes/
 
-```
-docker-compose.prod.yml
-```
-
----
-
-## kubernetes/
-
-Future deployment.
-
-```
-deployment.yaml
-
-service.yaml
-
-ingress.yaml
-```
+Not implemented yet. See the Roadmap document for what's needed before a production deployment (env validation, a real production compose profile without exposed DB ports or hardcoded credentials, graceful shutdown, etc.).
 
 ---
 
@@ -750,26 +720,32 @@ ingress.yaml
 ```
 docs/
 
-01-project-overview.md
+Project Overview.md
 
-02-system-architecture.md
+System Architecture.md
 
-03-folder-structure.md
+Folder Structure.md
 
-04-request-lifecycle.md
+Request Lifecycle.md
 
-05-database-architecture.md
+Database Architecture.md
 
-06-authentication.md
+Authentication Architecture.md
 
-07-authorization.md
+Authorization Architecture.md
 
-08-deployment.md
+Multi-Tenant & SaaS Architecture.md
 
-09-sdk.md
+SDK Architecture & Client Integration.md
 
-10-roadmap.md
+Security Architecture & Best Practices.md
+
+Infrastructure, Deployment & DevOps Architecture.md
+
+Roadmap, Milestones & Implementation Plan.md
 ```
+
+API reference documentation is also generated live from the running server at `/api/docs` (Swagger UI) and `/api/docs/openapi.json` (raw OpenAPI spec) - see `src/shared/openapi/`.
 
 ---
 
