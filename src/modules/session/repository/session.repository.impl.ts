@@ -25,7 +25,7 @@ export class SessionRepository implements ISessionRepository {
     try {
       const session = await Session.findOne({
         refreshTokenHash,
-        revokedAt: { $exists: false },
+        revokedAt: null,
       });
       return ok(session);
     } catch {
@@ -46,7 +46,7 @@ export class SessionRepository implements ISessionRepository {
     try {
       const sessions = await Session.find({
         userId,
-        revokedAt: { $exists: false },
+        revokedAt: null,
         expiresAt: { $gt: new Date() },
       }).sort({ lastActiveAt: -1 });
       return ok(sessions);
@@ -88,7 +88,7 @@ export class SessionRepository implements ISessionRepository {
   async revokeAllForUser(userId: string): Promise<DataResult<number>> {
     try {
       const result = await Session.updateMany(
-        { userId, revokedAt: { $exists: false } },
+        { userId, revokedAt: null },
         { revokedAt: new Date() },
       );
       return ok(result.modifiedCount);

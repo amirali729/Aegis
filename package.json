@@ -22,8 +22,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky",
+    "prepare": "command -v husky >/dev/null && husky || true",
     "docker:dev": "docker compose -f Docker/development/docker-compose.yml up --build",
+    "docker:dev:detach": "docker compose -f Docker/development/docker-compose.yml up -d --build",
     "docker:down": "docker compose -f Docker/development/docker-compose.yml down",
     "docker:clean": "docker compose -f Docker/development/docker-compose.yml down -v"
   },

@@ -1,16 +1,17 @@
 import { err, ok } from '../../../shared/result/result.js';
-import type { CreateRoleDto } from '../dto/create-role.dto.js';
-import type { UpdateRoleDto } from '../dto/update-role.dto.js';
-import type { SetRolePermissionsDto } from '../dto/set-role-permissions.dto.js';
+import { UserNotFoundError } from '../../auth/errors/user-not-found.error.js';
+import { PermissionNotFoundError } from '../../permission/errors/permission-not-found.error.js';
+import type { IPermissionRepository } from '../../permission/repository/interface/permission.repository.interface.js';
 import type { AssignRoleDto } from '../dto/assign-role.dto.js';
+import type { CreateRoleDto } from '../dto/create-role.dto.js';
+import type { SetRolePermissionsDto } from '../dto/set-role-permission.dto.js';
+import type { UpdateRoleDto } from '../dto/update-role.dto.js';
 import { RoleAlreadyExistsError } from '../errors/role-already-exists.error.js';
 import { RoleNotFoundError } from '../errors/role-not-found.error.js';
 import { SystemRoleImmutableError } from '../errors/system-role-immutable.error.js';
-import { PermissionNotFoundError } from '../../permission/errors/permission-not-found.error.js';
-import { UserNotFoundError } from '../../auth/errors/user-not-found.error.js';
 import type { IRoleRepository } from '../repository/interface/role.repository.interface.js';
 import type { IUserRoleRepository } from '../repository/interface/user-role.repository.interface.js';
-import type { IPermissionRepository } from '../../permission/repository/interface/permission.repository.interface.js';
+import { AssignRoleResponse } from '../responses/assign-role.response.js';
 import type {
   AssignRoleResult,
   DeleteRoleResult,
@@ -20,7 +21,6 @@ import type {
 } from '../types/role.types.js';
 import type { IRoleService } from './interface/role.service.interface.js';
 import { toRoleResponse } from './role-mapper.js';
-import { AssignRoleResponse } from '../responses/assign-role.response.js';
 
 export class RoleService implements IRoleService {
   constructor(

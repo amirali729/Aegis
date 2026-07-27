@@ -122,3 +122,6 @@ dist
 .DS_Store
 .vscode
 setting.json
+
+run.sh
+stop.sh

@@ -1,9 +1,11 @@
-import dotenv from 'dotenv';
+import './shared/config/load-env.js';
+// import dotenv from 'dotenv';
+
 import { createApp } from './app.js';
 import dbConnection from './shared/database/dbconnection.js';
-dotenv.config({
-  path: './src/shared/config/.env',
-});
+// dotenv.config({
+//   path: './src/shared/config/.env',
+// });
 
 const app = createApp();
 const PORT = Number(process.env.PORT) || 3000;

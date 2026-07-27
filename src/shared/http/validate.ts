@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { ZodType } from 'zod';
 import { BaseErrorResponse } from '../response/base.error.response.js';
 import { HttpStatus } from './http-status.js';
@@ -33,7 +33,13 @@ export function validate(targets: ValidationTargets) {
         return new BaseErrorResponse(message, HttpStatus.BAD_REQUEST).send(res);
       }
 
-      (req as unknown as Record<string, unknown>)[key] = result.data;
+      if (key === 'query') {
+        Object.assign(req.query, result.data);
+      } else if (key === 'params') {
+        Object.assign(req.params, result.data);
+      } else {
+        req.body = result.data;
+      }
     }
 
     next();

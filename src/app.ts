@@ -4,6 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
+import apiKeyRouter from './modules/apikey/routes/api-key.routes.js';
 import applicationRouter from './modules/application/routes/application.routes.js';
 import auditRouter from './modules/audit/routes/audit.routes.js';
 import authRouter from './modules/auth/routes/auth.routes.js';
@@ -65,6 +66,7 @@ export function createApp() {
   app.use('/api/v1', roleRouter);
   app.use('/api/v1', tenantRouter);
   app.use('/api/v1', applicationRouter);
+  app.use('/api/v1', apiKeyRouter);
   app.use('/api/v1', sessionRouter);
   app.use('/api/v1', auditRouter);
 
