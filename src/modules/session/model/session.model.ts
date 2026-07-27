@@ -49,6 +49,7 @@ const sessionSchema = new Schema<ISession>(
     expiresAt: {
       type: Date,
       required: true,
+      index: true,
     },
 
     lastActiveAt: {
