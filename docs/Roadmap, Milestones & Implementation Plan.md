@@ -1,62 +1,85 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Master Roadmap
+> Status: Reflects the current state of the project as of the latest development progress.
 >
-> Document: 12 - Roadmap, Milestones & Implementation Plan
+> Document: 12 - Project Status & Roadmap
 
 ---
 
 # Table of Contents
 
-1. Vision
-2. Development Philosophy
-3. Milestones
-4. Phase 1 — Foundation
-5. Phase 2 — Authentication
-6. Phase 3 — Session Management
-7. Phase 4 — Authorization
-8. Phase 5 — Multi-Tenancy
-9. Phase 6 — Applications & API Keys
-10. Phase 7 — Dashboard
-11. Phase 8 — SDKs
-12. Phase 9 — Infrastructure
-13. Phase 10 — Enterprise Features
-14. Phase 11 — Testing
-15. Phase 12 — Production Launch
-16. Long-Term Roadmap
+1. Project Overview
+2. Current Architecture
+3. Completed Features
+4. Current Progress
+5. High Priority Remaining Work
+6. Medium Priority Work
+7. Future Vision
+8. Long-Term Roadmap
+9. Release Roadmap
+10. Production Readiness
+11. Conclusion
 
 ---
 
-# 1. Vision
+# 1. Project Overview
 
-Build a modern identity platform that supports:
+Aegis is a modern Identity and Access Management (IAM) platform built for developers.
 
-- Hosted SaaS
-- Self-Hosted
-- SDKs
-- Multi-Tenant Architecture
-- Enterprise Security
-- High Scalability
+Its goal is to provide authentication, authorization, session management, API keys, applications, multi-tenant support, and a complete TypeScript SDK through a clean, modular architecture.
 
-The same codebase powers every deployment.
+The project is designed around modern software engineering practices including:
+
+- Clean Architecture
+- Repository Pattern
+- Modular Design
+- REST APIs
+- RBAC
+- Docker
+- CI/CD
+- TypeScript
+- OpenAPI
+- Security-first Development
 
 ---
 
-# 2. Development Philosophy
-
-Build in layers.
-
-Never build future features before the foundation is stable.
-
-Order:
+# Project Vision
 
 ```
-Foundation
+Developers
 
 ↓
 
+Aegis
+
+↓
+
+Authentication
+
+Authorization
+
+Applications
+
+API Keys
+
+SDK
+
+↓
+
+Their Products
+```
+
+The platform aims to become a complete identity provider that can be self-hosted or offered as a SaaS product.
+
+---
+
+# 2. Current Architecture
+
+The backend currently consists of modular components.
+
+```
 Authentication
 
 ↓
@@ -65,658 +88,513 @@ Authorization
 
 ↓
 
+Sessions
+
+↓
+
 Applications
 
 ↓
 
-SDK
+API Keys
 
 ↓
+
+Audit
+
+↓
+
+Tenants
+```
+
+Supporting infrastructure includes:
+
+- MongoDB
+- Docker
+- GitHub Actions
+- SMTP
+- TypeScript SDK Core
+
+---
+
+# Technology Stack
+
+Backend
+
+- TypeScript
+- Node.js
+- Express
+- MongoDB
+- Mongoose
+- Zod
+
+Authentication
+
+- JWT
+- Refresh Token Rotation
+- bcrypt
 
 Infrastructure
 
-↓
-
-Enterprise Features
-```
-
----
-
-# 3. Milestones
-
-```
-M1
-
-Working Authentication
-
-↓
-
-M2
-
-Authorization
-
-↓
-
-M3
-
-Multi Tenant
-
-↓
-
-M4
-
-Dashboard
-
-↓
-
-M5
+- Docker
+- Docker Compose
+- GitHub Actions
 
 SDK
 
-↓
-
-M6
-
-Hosted SaaS
-
-↓
-
-M7
-
-Enterprise Platform
-```
+- TypeScript SDK Core
 
 ---
 
-# Phase 1 — Foundation
+# 3. Completed Features
 
-Goal
-
-Create a clean architecture.
-
-Completed
-
-- Project structure
-- Modules
-- Shared layer
-- DTOs
-- Responses
-- Error system
-- Result pattern
-- Repository pattern
-- Controllers
-- Configuration
-- Docker support
-- Environment configuration
-
-Deliverable
-
-A maintainable backend architecture.
-
-Status
-
-✅ Mostly Completed
-
----
-
-# Phase 2 — Authentication
-
-Features
-
-- Signup
-- Login
-- Logout
-- Logout All
-- Refresh Tokens
-- JWT
-- Cookie Authentication
-- Password Hashing
-- Email Verification
-- Password Reset
-
-Deliverable
-
-A production-ready authentication system.
-
-Current Status
-
-🟡 Core functionality mostly implemented.
-
-Remaining Work
-
-- Email verification
-- Forgot password
-- Reset password
-- Token rotation validation improvements
-- Refresh token security hardening
-
----
-
-# Phase 3 — Session Management
-
-Replace
-
-```
-User.refreshToken
-```
-
-with
-
-```
-Sessions
-```
-
-Each login becomes
-
-```
-Session
-```
-
-Features
-
-- Multi-device login
-- Device names
-- Last activity
-- Session expiration
-- Session revocation
-- Session dashboard
-
-Deliverable
-
-Enterprise session management.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 4 — Authorization
-
-Features
-
-- Roles
-- Permissions
-- Role Assignment
-- Permission Assignment
-- Authorization Middleware
-- RBAC
-- Future ABAC
-
-Deliverable
-
-Flexible authorization engine.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 5 — Multi-Tenancy
-
-Features
-
-- Tenant model
-- Tenant middleware
-- Tenant resolver
-- Tenant isolation
-- Organizations
-
-Deliverable
-
-Hosted SaaS architecture.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 6 — Applications & API Keys
-
-Features
-
-Applications
-
-OAuth Clients
-
-Client IDs
-
-Client Secrets
-
-API Keys
-
-Allowed Origins
-
-Redirect URIs
-
-Token Configuration
-
-Deliverable
-
-Third-party application integration.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 7 — Dashboard
-
-Frontend
-
-React
-
-Features
-
-Authentication
-
-↓
-
-Applications
-
-↓
-
-Users
-
-↓
-
-Organizations
-
-↓
-
-Roles
-
-↓
-
-Permissions
-
-↓
-
-Sessions
-
-↓
-
-Audit Logs
-
-↓
-
-API Keys
-
-Deliverable
-
-Admin dashboard.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 8 — SDKs
-
-Packages
-
-```
-@identity/core
-
-@identity/react
-
-@identity/next
-
-@identity/node
-
-@identity/nest
-```
-
-Features
-
-Automatic Login
-
-Automatic Refresh
-
-Protected Routes
-
-React Hooks
-
-Middleware
-
-Server Session Helpers
-
-Deliverable
-
-Developer experience.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 9 — Infrastructure
-
-Docker
-
-Docker Compose
-
-Nginx
-
-Redis
-
-Monitoring
-
-CI/CD
-
-Secrets
-
-Logging
-
-Health Checks
-
-Backups
-
-Deliverable
-
-Production deployment.
-
-Status
-
-🟡 Partially Designed
-
----
-
-# Phase 10 — Enterprise Features
-
-OAuth
-
-Google
-
-GitHub
-
-Discord
-
-Microsoft
-
-Apple
-
-Enterprise
-
-Passkeys
-
-MFA
-
-WebAuthn
-
-SAML
-
-LDAP
-
-SCIM
-
-Organizations
-
-Hierarchical Roles
-
-Policies
-
-Audit Logs
-
-Webhooks
-
-Deliverable
-
-Enterprise identity platform.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 11 — Testing
-
-Unit Tests
-
-Integration Tests
-
-Repository Tests
-
-Controller Tests
-
-Middleware Tests
-
-Security Tests
-
-Load Tests
-
-Performance Tests
-
-Deliverable
-
-Reliable platform.
-
-Status
-
-🔲 Not Started
-
----
-
-# Phase 12 — Production Launch
-
-Production Checklist
-
-- HTTPS
-- Monitoring
-- Logging
-- Backups
-- Alerts
-- Rate Limiting
-- Secret Rotation
-- Database Backups
-- CI/CD
-- Documentation
-- SDK Documentation
-- OpenAPI Specification
-
-Deliverable
-
-Production-ready release.
-
-Status
-
-🔲 Not Started
-
----
-
-# Long-Term Roadmap
-
-Version 1.0
-
-- Authentication
-- Authorization
-- Dashboard
-- SDK
-- Multi-Tenant
-
-Version 2.0
-
-- OAuth Providers
-- MFA
-- Organizations
-- Webhooks
-
-Version 3.0
-
-- SAML
-- LDAP
-- SCIM
-- Enterprise Policies
-- Passkeys
-- Identity Federation
-
----
-
-# Current Project Status
-
-Completed
-
-✅ Clean Architecture
-
-✅ Repository Pattern
-
-✅ DTO Layer
-
-✅ Response Layer
-
-✅ Error System
-
-✅ Result Pattern
-
-✅ Authentication Module Structure
-
-✅ Login
+## Authentication
 
 ✅ Signup
+
+✅ Login
 
 ✅ Logout
 
 ✅ Logout All
 
-✅ Change Password
+✅ Email Verification
 
-✅ Refresh Token
+✅ Password Reset
 
-✅ JWT Authentication
+✅ Password Change
 
-✅ Cookie Authentication
-
-In Progress
-
-🟡 Authentication hardening
-
-🟡 Repository improvements
-
-🟡 Token improvements
-
-🟡 Validation improvements
-
-Not Started
-
-⬜ Authorization
-
-⬜ Multi-Tenant
-
-⬜ Applications
-
-⬜ Organizations
-
-⬜ API Keys
-
-⬜ Dashboard
-
-⬜ SDK
-
-⬜ Infrastructure
-
-⬜ Testing
-
-⬜ Enterprise Features
+✅ Refresh Token Rotation
 
 ---
 
-# Recommended Immediate Next Steps
+## Session Management
 
-## Priority 1
+✅ Session Creation
 
-- Finish authentication hardening
-- Add email verification
-- Add forgot/reset password
-- Replace single refresh token with session model
+✅ Multi-device Sessions
 
-## Priority 2
+✅ Session Listing
 
-- Design authorization (database implementation)
-- Implement roles and permissions
-- Add authorization middleware
+✅ Session Revocation
 
-## Priority 3
+---
 
-- Introduce tenant model
-- Add applications
-- Add API key management
+## Authorization
 
-## Priority 4
+✅ RBAC
 
-- Build React admin dashboard
-- Create developer documentation
-- Publish SDK packages
+✅ Roles
 
-## Priority 5
+✅ Permissions
 
-- Production deployment
-- Monitoring
+✅ Permission Middleware
+
+---
+
+## Applications
+
+✅ Application Management
+
+✅ Client Credentials
+
+✅ API Key Support
+
+---
+
+## API Keys
+
+✅ API Key Generation
+
+✅ SHA-256 Hashing
+
+✅ Revocation
+
+✅ Expiration
+
+---
+
+## SDK
+
+✅ SDK Core
+
+✅ Authentication
+
+✅ HTTP Client
+
+✅ Token Storage
+
+✅ Automatic Refresh
+
+✅ Event System
+
+✅ Session APIs
+
+✅ Smoke Tests
+
+---
+
+## Infrastructure
+
+✅ Docker Development Environment
+
+✅ GitHub CI
+
+✅ Release Workflow
+
+✅ Security Workflow
+
+✅ Staging Deployment Workflow
+
+✅ Production Deployment Workflow
+
+---
+
+# 4. Current Progress
+
+Current implementation status.
+
+| Module               | Status                 |
+| -------------------- | ---------------------- |
+| Authentication       | ✅ Complete            |
+| Authorization (RBAC) | ✅ Complete            |
+| Session Management   | ✅ Complete            |
+| Applications         | ✅ Complete            |
+| API Keys             | ✅ Complete            |
+| SDK Core             | ✅ Complete            |
+| Docker Development   | ✅ Complete            |
+| CI/CD Workflows      | ✅ Complete            |
+| SMTP                 | ✅ Complete            |
+| Audit Logging        | 🟡 Partial             |
+| Multi-Tenant         | 🟡 Foundation Complete |
+| Production Hardening | 🟡 In Progress         |
+| OAuth 2.1            | ❌ Planned             |
+| OpenID Connect       | ❌ Planned             |
+
+---
+
+# 5. High Priority Remaining Work
+
+These items should be completed before the first public production release.
+
+---
+
+## Startup Configuration Validation
+
+Create a centralized configuration module that validates all required environment variables before application startup.
+
+Examples include:
+
+- JWT Secrets
+- MongoDB URI
+- SMTP Configuration
+- Cookie Settings
+- Placeholder Secret Detection
+
+---
+
+## Browser-ready CORS
+
+Replace wildcard origins with an explicit allowlist.
+
+Current recommendation:
+
+```
+https://app.aegis.dev
+
+https://admin.aegis.dev
+```
+
+Support multiple origins through configuration.
+
+---
+
+## Account-level Brute-force Protection
+
+Current protection:
+
+```
+IP Rate Limiting
+```
+
+Recommended production protection:
+
+```
+IP Rate Limiting
+
++
+
+Account Lockout
+
++
+
+Exponential Backoff
+```
+
+Future enhancements may also include CAPTCHA and MFA.
+
+---
+
+## Expand Audit Logging
+
+Audit additional security-sensitive actions.
+
+Examples:
+
+- Role CRUD
+- Permission CRUD
+- Role Assignment
+- API Key Creation
+- API Key Revocation
+- Tenant Creation
+- Application Changes
+
+---
+
+# 6. Medium Priority Work
+
+These features improve scalability and enterprise readiness.
+
+---
+
+## Redis
+
+Introduce Redis for:
+
+- Distributed Rate Limiting
+- Session Cache
+- Permission Cache
+
+---
+
+## Complete Tenant Isolation
+
+Add `tenantId` to every tenant-owned model.
+
+Automatically filter repository queries by tenant.
+
+---
+
+## OAuth 2.1
+
+Current application records already contain:
+
+- Client IDs
+- Redirect URIs
+- Allowed Origins
+
+Implement the complete OAuth Authorization Code flow or remove unused OAuth-related configuration until it is supported.
+
+---
+
+## SDK Expansion
+
+Develop framework-specific SDKs for:
+
+- React
+- Next.js
+- Vue
+- Angular
+- NestJS
+
+---
+
+# 7. Future Vision
+
+Long-term vision:
+
+```
+Developer
+
+↓
+
+Aegis
+
+↓
+
+OAuth
+
+OIDC
+
+MFA
+
+SSO
+
+SCIM
+
+SAML
+
+↓
+
+Enterprise Applications
+```
+
+The platform should evolve into a full enterprise identity provider.
+
+---
+
+# 8. Long-Term Roadmap
+
+Future enterprise capabilities include:
+
+Authentication
+
+- Multi-Factor Authentication
+- WebAuthn / Passkeys
+- Passwordless Login
+
+Authorization
+
+- ABAC
+- Policy Engine
+- Resource Ownership
+- Conditional Access
+
+Enterprise
+
+- SAML
+- OpenID Connect
+- SCIM
+- LDAP
+- Active Directory
+
+Infrastructure
+
+- Kubernetes
+- Redis
+- Prometheus
+- Grafana
+- OpenTelemetry
+- Centralized Logging
+
+Deployment
+
+- Blue/Green Deployments
+- Canary Deployments
+- Automatic Rollbacks
+
+---
+
+# 9. Release Roadmap
+
+## Version 1.0
+
+Goal:
+
+Stable public release.
+
+Includes:
+
+- Authentication
+- RBAC
+- Sessions
+- Applications
+- API Keys
+- SDK Core
+- Docker
 - CI/CD
-- Security review
-- Load testing
 
 ---
 
-# Final Project Architecture
+## Version 1.1
 
-```
-                Identity Platform
+Focus:
 
-                       │
+Production hardening.
 
-        ┌──────────────┼──────────────┐
+Includes:
 
-        ▼              ▼              ▼
-
- Authentication   Authorization   SDK Layer
-
-        │              │              │
-
-        ▼              ▼              ▼
-
- Multi-Tenant     Applications   Dashboard
-
-        │              │
-
-        └──────────────┼──────────────┘
-
-                       ▼
-
-               Repository Layer
-
-                       ▼
-
-             Storage Provider Layer
-
-                       ▼
-
-     MongoDB / PostgreSQL / MySQL
-
-                       ▼
-
-              Docker / Kubernetes
-```
+- Startup configuration validation
+- Expanded audit logging
+- Browser-ready CORS
+- Account lockout
+- Redis-backed rate limiting
 
 ---
 
-# Final Vision
+## Version 2.0
 
-The project should become a complete Identity Platform that enables developers to add authentication and authorization to their applications without rebuilding those systems.
+Focus:
 
-The platform should provide:
+Enterprise identity.
 
-- Hosted SaaS deployment
-- Self-hosted deployment
+Includes:
+
+- OAuth 2.1
+- OpenID Connect
+- Multi-tenant isolation
 - Framework SDKs
-- Secure authentication
-- Flexible authorization
-- Multi-tenant support
-- Enterprise scalability
+- Monitoring
+- Kubernetes support
 
-while maintaining a single, modular, extensible codebase.
+---
+
+# 10. Production Readiness
+
+Current assessment.
+
+## Ready
+
+✅ Authentication
+
+✅ Authorization
+
+✅ Sessions
+
+✅ API Keys
+
+✅ SDK Core
+
+✅ Docker
+
+✅ CI/CD
+
+---
+
+## Needs Completion Before Production
+
+🟡 Startup Configuration Validation
+
+🟡 Browser-ready CORS
+
+🟡 Account-level Brute-force Protection
+
+🟡 Expanded Audit Logging
+
+---
+
+## Enterprise Features
+
+❌ OAuth 2.1
+
+❌ OpenID Connect
+
+❌ Full Tenant Isolation
+
+❌ Redis
+
+❌ Monitoring
+
+❌ Distributed Tracing
+
+---
+
+# 11. Conclusion
+
+Aegis has reached a strong architectural milestone.
+
+The platform already includes:
+
+- Secure JWT authentication
+- Refresh token rotation
+- Role-Based Access Control (RBAC)
+- Session management
+- API key authentication
+- Applications
+- Docker-based development
+- Production-grade CI/CD workflows
+- A completed TypeScript SDK Core with smoke-tested authentication flows
+
+The remaining work before a public production release is primarily focused on operational hardening rather than major architectural changes. Once startup configuration validation, account-level brute-force protection, expanded audit logging, and browser-ready CORS support are completed, the platform will be well-positioned for a stable v1.0 release.
+
+Beyond that, the roadmap focuses on enterprise capabilities such as OAuth 2.1, OpenID Connect, complete multi-tenant isolation, Redis-backed scalability, monitoring, and framework-specific SDKs, moving Aegis toward becoming a full-featured identity platform comparable to modern IAM solutions.

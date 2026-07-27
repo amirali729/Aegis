@@ -1,8 +1,8 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the current implementation (Development Docker environment and production-grade CI/CD workflows are implemented. Production infrastructure is planned.)
 >
 > Document: 10 - Infrastructure, Deployment & DevOps Architecture
 
@@ -10,57 +10,497 @@
 
 # Table of Contents
 
-1. Introduction
-2. Deployment Environments
-3. Infrastructure Overview
+1. Infrastructure Overview
+2. Design Goals
+3. Development Environment
 4. Docker Architecture
-5. Docker Compose
-6. Kubernetes (Future)
-7. Reverse Proxy
-8. Database Layer
-9. Cache Layer
-10. Object Storage
-11. Secrets Management
-12. Configuration
-13. Logging
-14. Monitoring
-15. Health Checks
-16. CI/CD
-17. Backup Strategy
-18. Scaling Strategy
-19. Hosted SaaS Deployment
-20. Self-Hosted Deployment
+5. CI Pipeline
+6. CD Pipeline
+7. Release Pipeline
+8. Deployment Architecture
+9. Production Infrastructure
+10. Monitoring & Observability
+11. Current Status
+12. Future Improvements
 
 ---
 
-# 1. Introduction
+# 1. Infrastructure Overview
 
-The platform must run reliably in three environments:
+The infrastructure behind Aegis is designed around modern DevOps principles.
 
-```
-Development
+The goals are:
 
-↓
+- Repeatable deployments
+- Automated testing
+- Secure releases
+- Containerized development
+- Scalable production infrastructure
 
-Staging
-
-↓
-
-Production
-```
-
-Every environment should use the same application code.
-
-Only configuration changes.
+The same application can run locally, in staging, or in production with only configuration changes.
 
 ---
 
-# 2. Deployment Environments
-
-Development
+# High-Level Architecture
 
 ```
-Developer Laptop
+Developer
+
+↓
+
+GitHub
+
+↓
+
+GitHub Actions
+
+↓
+
+Docker Images
+
+↓
+
+Deployment
+
+↓
+
+Running Platform
+```
+
+Every deployment follows the same automated process.
+
+---
+
+# 2. Design Goals
+
+The infrastructure is designed around several principles.
+
+---
+
+## Reproducible Environments
+
+Every developer should run the same environment.
+
+Instead of manually installing dependencies:
+
+```
+Docker Compose
+
+↓
+
+Backend
+
+↓
+
+MongoDB
+
+↓
+
+Ready
+```
+
+---
+
+## Automation
+
+Every push should automatically verify code quality.
+
+Automation includes:
+
+- Install Dependencies
+- Lint
+- Type Checking
+- Tests
+- Build
+- Security Checks
+
+---
+
+## Safe Deployments
+
+Production deployments should be:
+
+- Repeatable
+- Versioned
+- Recoverable
+- Observable
+
+---
+
+## Infrastructure as Code
+
+Infrastructure should be described through:
+
+- Dockerfiles
+- Docker Compose
+- GitHub Actions
+- Environment Configuration
+
+---
+
+# 3. Development Environment
+
+The project includes a Docker-based development environment.
+
+Current stack:
+
+```
+Backend
+
+↓
+
+MongoDB
+
+↓
+
+Docker Network
+```
+
+Running the environment requires:
+
+```bash
+docker compose up --build
+```
+
+This command:
+
+- Builds the backend image
+- Creates containers
+- Starts services
+- Displays logs
+
+---
+
+## Detached Mode
+
+Development containers may also run in the background.
+
+```bash
+docker compose up -d
+```
+
+---
+
+## Viewing Logs
+
+Useful commands:
+
+```bash
+docker logs -f Aegis-backend
+```
+
+```bash
+docker ps
+```
+
+---
+
+## Container Networking
+
+Containers communicate using Docker service names.
+
+Example:
+
+```
+Backend
+
+↓
+
+mongodb
+
+↓
+
+MongoDB Container
+```
+
+Instead of:
+
+```
+localhost
+```
+
+the backend connects using:
+
+```
+mongodb:27017
+```
+
+---
+
+# 4. Docker Architecture
+
+Current development architecture:
+
+```
+Docker Compose
+
+├── Backend
+
+└── MongoDB
+```
+
+Both services communicate through Docker's internal network.
+
+---
+
+## Backend Container
+
+Responsibilities:
+
+- Express Server
+- REST API
+- Authentication
+- Authorization
+- Session Management
+- OpenAPI
+
+---
+
+## MongoDB Container
+
+Stores:
+
+- Users
+- Sessions
+- Roles
+- Permissions
+- Applications
+- API Keys
+- Audit Logs
+- Tenants
+
+Authentication is enabled using MongoDB credentials.
+
+---
+
+## Dockerfile
+
+The backend uses a multi-stage Docker build.
+
+Typical stages include:
+
+```
+Install Dependencies
+
+↓
+
+Compile TypeScript
+
+↓
+
+Production Image
+
+↓
+
+Run Application
+```
+
+This keeps production images smaller.
+
+---
+
+# 5. CI Pipeline
+
+Continuous Integration is implemented using GitHub Actions.
+
+Current workflow:
+
+```
+Push
+
+↓
+
+GitHub Actions
+
+↓
+
+Install Dependencies
+
+↓
+
+Lint
+
+↓
+
+Type Check
+
+↓
+
+Unit Tests
+
+↓
+
+Coverage
+
+↓
+
+Build
+```
+
+Any failure stops the pipeline.
+
+---
+
+## CI Goals
+
+The CI pipeline verifies:
+
+- Code Quality
+- Type Safety
+- Build Success
+- Test Success
+
+before code is merged.
+
+---
+
+# 6. CD Pipeline
+
+The project includes deployment workflows for:
+
+- Staging
+- Production
+
+---
+
+## Staging Deployment
+
+Flow
+
+```
+Merge into Main
+
+↓
+
+GitHub Actions
+
+↓
+
+SSH
+
+↓
+
+Git Pull
+
+↓
+
+Docker Pull
+
+↓
+
+Docker Compose Up
+
+↓
+
+Health Check
+```
+
+Deployments are automatic.
+
+---
+
+## Production Deployment
+
+Production deployments require manual approval.
+
+Flow
+
+```
+Manual Approval
+
+↓
+
+SSH
+
+↓
+
+Backup MongoDB
+
+↓
+
+Pull Images
+
+↓
+
+Restart Containers
+
+↓
+
+Health Check
+```
+
+This reduces deployment risk.
+
+---
+
+# 7. Release Pipeline
+
+The project includes a release workflow.
+
+Responsibilities include:
+
+- Create GitHub Release
+- Build SDK Package
+- Publish Release Artifacts
+
+Future versions may also publish npm packages automatically.
+
+---
+
+## Security Workflow
+
+Dedicated security checks currently include:
+
+```
+npm audit
+
+↓
+
+Dependency Review
+
+↓
+
+CodeQL
+```
+
+These help identify vulnerable dependencies before release.
+
+---
+
+# 8. Deployment Architecture
+
+## Development
+
+```
+Developer
+
+↓
+
+Docker Compose
+
+↓
+
+Backend
+
+↓
+
+MongoDB
+```
+
+---
+
+## Staging
+
+```
+GitHub
+
+↓
+
+GitHub Actions
+
+↓
+
+Staging Server
 
 ↓
 
@@ -69,66 +509,20 @@ Docker Compose
 ↓
 
 MongoDB
-
-↓
-
-Redis
-```
-
-Staging
-
-```
-Cloud VM
-
-↓
-
-Docker Compose
-
-↓
-
-Production-like Testing
-```
-
-Production
-
-```
-Cloud
-
-↓
-
-Load Balancer
-
-↓
-
-Identity Platform
-
-↓
-
-Database
-
-↓
-
-Redis
-
-↓
-
-Monitoring
 ```
 
 ---
 
-# 3. Infrastructure Overview
+## Production
+
+Recommended architecture:
 
 ```
 Internet
 
 ↓
 
-DNS
-
-↓
-
-Reverse Proxy
+Nginx
 
 ↓
 
@@ -136,360 +530,106 @@ Identity Platform
 
 ↓
 
-Redis
-
-↓
-
 MongoDB
 
 ↓
 
-Object Storage
+Redis (Future)
 
 ↓
 
-Monitoring
+SMTP Provider
 ```
 
-Every component has one responsibility.
+Nginx is planned as the reverse proxy for HTTPS termination and request forwarding.
 
 ---
 
-# 4. Docker Architecture
+# 9. Production Infrastructure
 
-Every service runs in its own container.
-
-```
-identity-api
-
-mongodb
-
-redis
-
-nginx
-
-prometheus
-
-grafana
-```
-
-Containers communicate through an internal Docker network.
-
----
-
-# 5. Docker Compose
-
-Development stack
+Recommended production stack:
 
 ```
-docker-compose.yml
+GitHub
 
 ↓
 
-identity-api
-
-mongodb
-
-redis
-```
-
-Optional services
-
-```
-mailpit
-
-mongo-express
-
-redis-insight
-```
-
-Useful for local development.
-
----
-
-# 6. Kubernetes (Future)
-
-Production can eventually use Kubernetes.
-
-```
-Ingress
+GitHub Actions
 
 ↓
 
-Identity Pods
+GitHub Container Registry
 
 ↓
 
-Service
+Production VPS
 
 ↓
 
-Database
+Docker
 
 ↓
 
-Redis
-```
-
-Advantages
-
-- Auto scaling
-- Self healing
-- Rolling updates
-- High availability
-
----
-
-# 7. Reverse Proxy
-
-Recommended
-
-```
 Nginx
-```
 
-or
+↓
 
-```
-Traefik
-```
+Identity Platform
 
-Responsibilities
+↓
 
-- HTTPS
-- Compression
-- Rate limiting
-- Static assets
-- Reverse proxy
-- Security headers
-
----
-
-# 8. Database Layer
-
-Supported databases
-
-```
 MongoDB
 
-PostgreSQL
+↓
 
-MySQL
+Redis (Future)
 ```
 
-Repository interfaces hide database differences.
+SMTP is used for:
 
-Only one provider is active at runtime.
-
-Environment example
-
-```
-DATABASE_PROVIDER=mongodb
-```
-
-Future
-
-```
-DATABASE_PROVIDER=postgres
-```
-
-or
-
-```
-DATABASE_PROVIDER=mysql
-```
+- Email Verification
+- Password Reset
+- Future Notifications
 
 ---
 
-# 9. Cache Layer
+## Configuration
 
-Redis responsibilities
+Production deployments should use:
 
-```
-Session Cache
+- Strong JWT Secrets
+- Secure Cookie Configuration
+- HTTPS
+- Environment Variables
+- Separate SMTP Credentials
 
-↓
-
-Permission Cache
-
-↓
-
-Rate Limiting
-
-↓
-
-Temporary Tokens
-
-↓
-
-Verification Codes
-```
-
-Redis should never be the source of truth.
-
-The database remains authoritative.
+Secrets should never be committed to source control.
 
 ---
 
-# 10. Object Storage
+# 10. Monitoring & Observability
 
-Object storage is not required for authentication itself.
+Current monitoring includes:
 
-Future uses
+- Docker Health Checks
+- Application Logs
+- GitHub Actions Logs
+
+---
+
+## Planned Monitoring
+
+Future production deployments should integrate:
 
 ```
-User Avatars
+Application
 
 ↓
 
-Organization Logos
+Metrics
 
 ↓
 
-Audit Exports
-
-↓
-
-Reports
-```
-
-Possible providers
-
-```
-Amazon S3
-
-MinIO
-
-Cloudflare R2
-
-Azure Blob Storage
-```
-
-Storage should be abstracted behind an interface.
-
----
-
-# 11. Secrets Management
-
-Never hardcode secrets.
-
-Examples
-
-```
-JWT Secret
-
-Refresh Secret
-
-SMTP Password
-
-Database Password
-
-OAuth Secrets
-```
-
-Development
-
-```
-.env
-```
-
-Production
-
-```
-Cloud Secret Manager
-
-or
-
-Docker Secrets
-
-or
-
-Kubernetes Secrets
-```
-
----
-
-# 12. Configuration
-
-Configuration should be centralized.
-
-Example
-
-```
-config/
-
-    app.ts
-
-    auth.ts
-
-    cookie.ts
-
-    database.ts
-
-    redis.ts
-
-    mail.ts
-
-    storage.ts
-```
-
-Never scatter configuration throughout the project.
-
----
-
-# 13. Logging
-
-Every request should produce structured logs.
-
-Fields
-
-```
-timestamp
-
-requestId
-
-tenantId
-
-userId
-
-method
-
-path
-
-status
-
-duration
-```
-
-Avoid plain console logging in production.
-
----
-
-# 14. Monitoring
-
-Monitor
-
-```
-CPU
-
-Memory
-
-Database Connections
-
-Redis
-
-Login Rate
-
-Refresh Rate
-
-Errors
-
-Latency
-```
-
-Recommended stack
-
-```
 Prometheus
 
 ↓
@@ -499,374 +639,189 @@ Grafana
 
 ---
 
-# 15. Health Checks
+## Planned Logging
 
-Endpoints
+Centralized logging may include:
 
-```
-GET /health
-
-GET /ready
-
-GET /live
-```
-
-Health
-
-```
-Application Running?
-```
-
-Ready
-
-```
-Database Connected?
-
-Redis Connected?
-```
-
-Live
-
-```
-Process Alive?
-```
-
-These are useful for orchestrators like Kubernetes.
+- Loki
+- ELK Stack
+- Cloud Logging
 
 ---
 
-# 16. CI/CD
+## Planned Tracing
 
-Pipeline
-
-```
-GitHub
-
-↓
-
-Build
-
-↓
-
-Lint
-
-↓
-
-Tests
-
-↓
-
-Docker Image
-
-↓
-
-Push Registry
-
-↓
-
-Deploy
-```
-
-Recommended tools
+Distributed tracing may include:
 
 ```
-GitHub Actions
-
-Docker
-
-Container Registry
-```
-
----
-
-# 17. Backup Strategy
-
-Database
-
-```
-Daily Backup
-
-↓
-
-Encrypted Storage
-
-↓
-
-Retention Policy
-```
-
-Regularly test restore procedures.
-
-A backup that cannot be restored is not a reliable backup.
-
----
-
-# 18. Scaling Strategy
-
-Scale horizontally.
-
-```
-Load Balancer
-
-↓
-
-Identity API
-
-Identity API
-
-Identity API
-
-↓
-
-Shared Database
-
-↓
-
-Redis
-```
-
-Avoid storing session state inside application memory.
-
----
-
-# 19. Hosted SaaS Deployment
-
-```
-Internet
-
-↓
-
-Load Balancer
-
-↓
-
-Nginx
-
-↓
-
-Identity API
-
-↓
-
-Redis
-
-↓
-
-MongoDB Cluster
-
-↓
-
-Monitoring
-```
-
-Additional services
-
-```
-Email Service
-
-Object Storage
-
-Background Workers
-
-Audit Logs
-```
-
----
-
-# 20. Self-Hosted Deployment
-
-Docker Compose
-
-```
-identity-api
-
-mongodb
-
-redis
-```
-
-Optional
-
-```
-postgres
-
-mysql
-
-mailpit
-
-nginx
-```
-
-The customer chooses which database provider to enable.
-
----
-
-# 21. Container Layout
-
-```
-containers/
-
-    identity-api
-
-    mongodb
-
-    postgres
-
-    mysql
-
-    redis
-
-    nginx
-
-    mailpit
-
-    prometheus
-
-    grafana
-```
-
----
-
-# 22. Network Layout
-
-```
-Internet
-
-↓
-
-443
-
-↓
-
-Reverse Proxy
-
-↓
-
-Internal Network
-
-↓
-
 Application
 
 ↓
 
-Database
+OpenTelemetry
+
+↓
+
+Tracing Backend
 ```
 
-Databases should never be exposed directly to the public internet.
+This helps diagnose performance issues across services.
 
 ---
 
-# 23. Security Checklist
+# 11. Current Status
 
-✓ HTTPS Everywhere
+## Implemented
 
-✓ HTTP Only Cookies
+✅ Docker Development Environment
 
-✓ Secure Cookies
+✅ Docker Compose
 
-✓ Security Headers
+✅ Multi-stage Docker Build
 
-✓ Database Authentication
+✅ MongoDB Container
 
-✓ Secret Rotation
+✅ GitHub CI Workflow
 
-✓ Encrypted Backups
+✅ Security Workflow
 
-✓ Rate Limiting
+✅ Release Workflow
 
-✓ Audit Logging
+✅ Staging Deployment Workflow
 
-✓ Dependency Updates
+✅ Production Deployment Workflow
+
+✅ SMTP Integration
 
 ---
 
-# 24. Future Infrastructure
+## Partially Implemented
 
-Planned additions
+- Deployment workflows are designed, but production infrastructure has not yet been provisioned.
+- Docker is production-ready, but Kubernetes support is not yet available.
+
+---
+
+## Not Implemented
+
+- Kubernetes
+
+- Helm Charts
+
+- Redis
+
+- Prometheus
+
+- Grafana
+
+- ELK / Loki
+
+- OpenTelemetry
+
+- Horizontal Scaling
+
+- Automatic Rollback
+
+- Blue/Green Deployments
+
+- Canary Deployments
+
+---
+
+# 12. Future Improvements
+
+## Redis
+
+Introduce Redis for:
+
+- Distributed Rate Limiting
+- Permission Caching
+- Session Caching
+
+---
+
+## Kubernetes
+
+Future deployments may support:
 
 ```
 Kubernetes
 
-Multi-region Deployment
+↓
 
-CDN
+Pods
 
-Distributed Cache
+↓
 
-Background Workers
+Services
 
-Event Bus
+↓
 
-Message Queue
+Ingress
 
-Webhooks
+↓
 
-Blue/Green Deployment
-
-Canary Releases
+Identity Platform
 ```
 
 ---
 
-# 25. Complete Infrastructure Diagram
+## Container Registry
 
-```
-                   Internet
-
-                       │
-
-                       ▼
-
-                 DNS / HTTPS
-
-                       │
-
-                       ▼
-
-               Reverse Proxy
-
-                       │
-
-         ┌─────────────┼─────────────┐
-
-         ▼             ▼             ▼
-
-   Identity API  Identity API  Identity API
-
-         │             │             │
-
-         └─────────────┼─────────────┘
-
-                       ▼
-
-                    Redis
-
-                       ▼
-
-              Repository Layer
-
-                       ▼
-
-        MongoDB / PostgreSQL / MySQL
-
-                       ▼
-
-                 Backup System
-```
+Use GitHub Container Registry (GHCR) for versioned Docker image distribution.
 
 ---
 
-# Summary
+## Automatic Rollback
 
-The infrastructure is designed around the principle that application code remains the same across environments.
+Failed deployments should automatically restore the previous healthy version.
 
-Infrastructure differences are handled through:
+---
 
-- Environment variables
-- Container orchestration
-- Repository abstractions
-- External configuration
-- Scalable networking
+## Blue/Green Deployment
 
-This architecture supports both a simple single-server deployment and a highly available cloud deployment without requiring changes to business logic.
+Future deployments may support:
+
+```
+Blue Environment
+
+↓
+
+Health Check
+
+↓
+
+Traffic Switch
+
+↓
+
+Green Environment
+```
+
+This minimizes downtime.
+
+---
+
+## Canary Deployment
+
+Future deployments may gradually route traffic to new versions before full rollout.
+
+---
+
+## Observability
+
+Complete production monitoring should include:
+
+- Prometheus
+- Grafana
+- OpenTelemetry
+- Centralized Logging
+- Alerting
+
+---
+
+# Infrastructure Summary
+
+The Aegis infrastructure provides a modern DevOps foundation centered around Docker-based development, GitHub Actions for CI/CD, automated release workflows, and containerized deployments.
+
+The current implementation is well suited for development and controlled deployments. The remaining work focuses on production infrastructure, including Redis, monitoring, distributed tracing, Kubernetes, automated rollback strategies, and advanced deployment techniques such as Blue/Green and Canary releases.

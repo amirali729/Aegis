@@ -1,8 +1,8 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the current implementation (Foundational multi-tenant architecture implemented. Applications are tenant-scoped; complete tenant isolation is planned.)
 >
 > Document: 08 - Multi-Tenant & SaaS Architecture
 
@@ -10,684 +10,389 @@
 
 # Table of Contents
 
-1. Introduction
-2. Deployment Models
-3. Core Concepts
-4. Tenant Architecture
-5. Application Architecture
-6. User Architecture
-7. Organization Architecture
-8. API Key Architecture
-9. OAuth Client Architecture
-10. Hosted SaaS
-11. Self Hosted
-12. Tenant Isolation
-13. Future Expansion
-14. Complete System Diagram
+1. Multi-Tenancy Overview
+2. Design Goals
+3. SaaS Architecture
+4. Tenant Model
+5. Current Tenant Architecture
+6. Tenant Resolution
+7. Data Isolation
+8. Tenant-Aware Resources
+9. Tenant Lifecycle
+10. Security Considerations
+11. Current Status
+12. Future Improvements
 
 ---
 
-# 1. Introduction
+# 1. Multi-Tenancy Overview
 
-This document defines how multiple independent customers can use the Identity Platform without interfering with one another.
+Aegis is designed to operate as either:
 
-The same codebase supports two deployment modes:
+- A hosted SaaS identity platform
+- A self-hosted identity platform
 
-- Hosted SaaS
-- Self Hosted
-
-Only the infrastructure changes.
+The same codebase supports both deployment models.
 
 ---
 
-# 2. Deployment Models
+## What is a Tenant?
 
-## Hosted SaaS
+A tenant represents an independent customer using the platform.
 
-```
-Customer
-
-↓
-
-Identity Platform
-
-↓
-
-Shared Infrastructure
-
-↓
-
-Tenant Isolation
-
-↓
-
-MongoDB
-```
-
-Every customer receives an isolated tenant.
-
----
-
-## Self Hosted
+Examples include:
 
 ```
-Customer
-
-↓
-
-Docker Compose
-
-↓
-
-Identity Platform
-
-↓
-
-Own Database
-```
-
-No tenant isolation is required because the customer owns the entire deployment.
-
----
-
-# 3. Core Concepts
-
-The platform consists of five major concepts.
-
-```
-Tenant
-
-↓
-
-Application
-
-↓
-
-Organization
-
-↓
-
-Users
-
-↓
-
-Roles & Permissions
-```
-
-Everything belongs to a tenant.
-
----
-
-# 4. Tenant
-
-A Tenant represents a customer.
-
-Examples
-
-```
-Microsoft
-
-Google
-
-Amazon
-
 Acme Inc.
 
-University A
+↓
+
+Tenant A
+
+--------------------
+
+Globex Corp.
+
+↓
+
+Tenant B
+
+--------------------
+
+Example University
+
+↓
+
+Tenant C
 ```
 
-Each tenant has completely isolated data.
+Each tenant owns its own applications and, in the future, its own identity data.
 
 ---
 
-Tenant model
+# 2. Design Goals
 
-```
-Tenant
-
-id
-
-name
-
-slug
-
-status
-
-plan
-
-createdAt
-
-updatedAt
-```
-
-Future fields
-
-```
-billingId
-
-ownerId
-
-settings
-
-limits
-
-branding
-```
+The tenant architecture follows several principles.
 
 ---
 
-# 5. Application
+## Isolation
 
-Every tenant can create multiple applications.
-
-Example
+Every tenant should only be able to access its own resources.
 
 ```
-Acme
+Tenant A
 
-↓
+×
 
-Website
-
-↓
-
-Mobile App
-
-↓
-
-Admin Dashboard
-
-↓
-
-Public API
+Tenant B Data
 ```
 
-Each application has its own authentication configuration.
+Cross-tenant access should never occur.
 
 ---
 
-Application model
+## Single Platform
 
-```
-Application
-
-id
-
-tenantId
-
-name
-
-clientId
-
-clientSecret
-
-allowedOrigins
-
-redirectUris
-
-accessTokenTTL
-
-refreshTokenTTL
-
-createdAt
-
-updatedAt
-```
-
----
-
-Applications own:
-
-- OAuth configuration
-- API Keys
-- Redirect URLs
-- Allowed Origins
-- Login Settings
-
----
-
-# 6. User
-
-Users belong to a tenant.
-
-Future structure
-
-```
-Tenant
-
-↓
-
-Application
-
-↓
-
-Organization
-
-↓
-
-User
-```
-
-User model
-
-```
-id
-
-tenantId
-
-organizationId
-
-email
-
-passwordHash
-
-emailVerified
-
-status
-
-createdAt
-
-updatedAt
-```
-
-Notice
-
-No hardcoded roles.
-
-No permissions.
-
-Those belong elsewhere.
-
----
-
-# 7. Organization
-
-Organizations divide users inside a tenant.
-
-Example
-
-```
-Acme
-
-↓
-
-Engineering
-
-↓
-
-Finance
-
-↓
-
-Marketing
-
-↓
-
-Support
-```
-
-Organization model
-
-```
-Organization
-
-id
-
-tenantId
-
-name
-
-description
-```
-
-Organizations make enterprise deployments much easier.
-
----
-
-# 8. Roles
-
-Roles belong to a tenant.
-
-Example
-
-```
-Tenant
-
-↓
-
-Admin
-
-Manager
-
-Employee
-
-Intern
-```
-
-Different tenants may define completely different roles.
-
----
-
-# 9. Permissions
-
-Permissions belong to roles.
-
-```
-Role
-
-↓
-
-Permission
-
-↓
-
-Action
-```
-
-Example
-
-```
-Admin
-
-↓
-
-user:create
-
-↓
-
-Allowed
-```
-
----
-
-# 10. API Keys
-
-Applications communicate with the platform using API credentials.
-
-```
-Application
-
-↓
-
-Client ID
-
-↓
-
-Client Secret
-
-↓
-
-API Key
-```
-
-API Key model
-
-```
-id
-
-applicationId
-
-name
-
-hashedKey
-
-status
-
-expiresAt
-```
-
-Never store API keys in plain text.
-
-Store only hashes.
-
----
-
-# 11. OAuth Clients
-
-Future
-
-Every application may enable
-
-```
-Google
-
-GitHub
-
-Discord
-
-Microsoft
-
-Apple
-```
-
-OAuth configuration belongs to the application.
-
-Not globally.
-
----
-
-# 12. Hosted SaaS
-
-Hosted deployment
+A single deployment should host many organizations.
 
 ```
 Internet
 
 ↓
 
-Load Balancer
+Aegis
 
 ↓
 
-Identity Platform
+Tenant A
 
-↓
+Tenant B
 
-Tenant Resolver
-
-↓
-
-Application Resolver
-
-↓
-
-Repository
-
-↓
-
-MongoDB
+Tenant C
 ```
 
-Every request identifies
-
-- Tenant
-- Application
-
-before business logic executes.
+No dedicated server is required per customer.
 
 ---
 
-# 13. Tenant Resolution
+## Scalability
 
-Possible methods
-
-Header
+The architecture should scale from:
 
 ```
-X-Tenant-ID
-```
-
-Subdomain
-
-```
-acme.identity.com
-```
-
-Custom Domain
-
-```
-login.acme.com
-```
-
-JWT Claim
-
-```
-tenantId
-```
-
-Application Key
-
-```
-clientId
-```
-
-The resolver determines the active tenant.
-
----
-
-# 14. Data Isolation
-
-Every query automatically filters by tenant.
-
-Example
-
-Instead of
-
-```
-SELECT users
-```
-
-the platform performs
-
-```
-SELECT users
-
-WHERE tenantId = currentTenant
-```
-
-Mongo equivalent
-
-```ts
-{
-  tenantId: currentTenant;
-}
-```
-
-No repository should ever forget tenant filtering.
-
----
-
-# 15. Self Hosted
-
-Self-hosted deployments usually contain one tenant.
-
-```
-Customer
+1 Tenant
 
 ↓
 
-Own Identity Platform
+100 Tenants
 
 ↓
 
-Own Database
+10,000 Tenants
 ```
 
-No tenant resolution is necessary.
+without architectural changes.
 
-Configuration
+---
+
+## Optional Multi-Tenancy
+
+Organizations that self-host Aegis may disable multi-tenancy entirely.
 
 ```
 MULTI_TENANT=false
 ```
 
----
-
-# 16. Authentication Flow
-
-Hosted SaaS
-
-```
-Request
-
-↓
-
-Resolve Tenant
-
-↓
-
-Resolve Application
-
-↓
-
-Authentication
-
-↓
-
-Authorization
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Database
-```
-
-Tenant resolution always occurs before authentication.
+In this mode, tenant resolution becomes unnecessary.
 
 ---
 
-# 17. SDK Flow
+# 3. SaaS Architecture
 
-Developer installs SDK.
-
-```
-npm install
-```
-
-Configuration
-
-```ts
-IdentitySDK.configure({
-  clientId,
-
-  baseUrl,
-
-  apiKey,
-});
-```
-
-SDK communicates with
+Hosted deployment:
 
 ```
-Hosted Identity Platform
-```
+Internet
 
-No database access.
+↓
 
-No internal knowledge.
+Aegis Platform
 
----
+↓
 
-# 18. Future Dashboard
+Tenant
 
-Tenant administrators can manage
+↓
 
 Applications
 
 ↓
 
 Users
+```
+
+Each tenant manages its own applications.
+
+Future versions will also isolate users, roles, permissions, sessions, and audit logs.
+
+---
+
+## Deployment Models
+
+### Hosted SaaS
+
+```
+Platform
 
 ↓
 
-Organizations
+Many Tenants
+
+↓
+
+Many Applications
+```
+
+---
+
+### Self Hosted
+
+```
+Organization
+
+↓
+
+Single Tenant
+
+↓
+
+Applications
+```
+
+The same APIs remain available in both deployments.
+
+---
+
+# 4. Tenant Model
+
+A tenant represents an organization.
+
+Typical information includes:
+
+```
+Tenant Name
+
+Slug
+
+Status
+
+Owner
+
+Configuration
+
+Branding
+
+Created At
+
+Updated At
+```
+
+Future versions may additionally include:
+
+- Billing
+- Subscription Plan
+- Domains
+- SSO Configuration
+- Branding Assets
+
+---
+
+# 5. Current Tenant Architecture
+
+Current relationship:
+
+```
+Tenant
+
+↓
+
+Applications
+
+↓
+
+API Keys
+```
+
+Applications belong to a tenant.
+
+API Keys belong to an application.
+
+This part of the architecture is implemented.
+
+---
+
+## Current Scope
+
+Currently tenant ownership exists primarily for:
+
+- Applications
+- API Keys
+
+Other modules currently operate globally.
+
+---
+
+## Current Limitation
+
+The following resources are **not yet tenant-isolated**:
+
+- Users
+- Roles
+- Permissions
+- Sessions
+- Audit Logs
+
+These resources currently exist globally across the platform.
+
+---
+
+# 6. Tenant Resolution
+
+Incoming requests may identify a tenant.
+
+Current middleware:
+
+```
+resolveTenant
+```
+
+Responsibilities include:
+
+- Identify tenant
+- Attach tenant information to the request
+- Allow downstream services to access the current tenant
+
+---
+
+## Future Resolution Strategies
+
+Possible tenant identification methods include:
+
+### Domain
+
+```
+acme.aegis.dev
+
+↓
+
+Tenant
+```
+
+---
+
+### Custom Domain
+
+```
+login.company.com
+
+↓
+
+Tenant
+```
+
+---
+
+### Header
+
+```
+X-Tenant-ID
+
+↓
+
+Tenant
+```
+
+---
+
+### JWT Claims
+
+```
+JWT
+
+↓
+
+tenantId
+
+↓
+
+Tenant
+```
+
+Multiple strategies may be supported simultaneously.
+
+---
+
+# 7. Data Isolation
+
+Current isolation:
+
+```
+Tenant
+
+↓
+
+Applications
+```
+
+Future isolation:
+
+```
+Tenant
+
+↓
+
+Users
 
 ↓
 
@@ -708,217 +413,94 @@ Audit Logs
 ↓
 
 API Keys
-
-Everything from the web dashboard.
-
----
-
-# 19. Billing (Future)
-
-Tenant
-
-↓
-
-Subscription
-
-↓
-
-Plan
-
-↓
-
-Limits
-
-Example
-
-```
-Free
-
-↓
-
-5 Applications
-
-↓
-
-1,000 Users
 ```
 
+Every tenant-owned resource will include:
+
 ```
-Pro
-
-↓
-
-Unlimited Applications
-
-↓
-
-50,000 Users
+tenantId
 ```
 
 ---
 
-# 20. Monitoring
+## Query Filtering
 
-Every tenant has separate metrics.
+Future repositories should automatically filter by tenant.
 
-Examples
+Instead of:
 
 ```
-Logins
-
-↓
-
-Failed Logins
-
-↓
-
-Active Sessions
-
-↓
-
-API Usage
-
-↓
-
-Refresh Requests
-
-↓
-
-Errors
+find()
 ```
+
+Repositories will execute:
+
+```
+find({
+    tenantId: currentTenant
+})
+```
+
+This prevents accidental data leakage.
 
 ---
 
-# 21. Complete SaaS Architecture
+# 8. Tenant-Aware Resources
 
-```
-                        Internet
-
-                            │
-
-                            ▼
-
-                     Load Balancer
-
-                            │
-
-                            ▼
-
-                     Identity Platform
-
-                            │
-
-        ┌───────────────────┼───────────────────┐
-
-        ▼                   ▼                   ▼
-
- Tenant Resolver    Application Resolver   Rate Limiter
-
-        │                   │
-
-        └───────────────┬───┘
-
-                        ▼
-
-                 Authentication
-
-                        ▼
-
-                 Authorization
-
-                        ▼
-
-                  Repository Layer
-
-                        ▼
-
-                  Storage Provider
-
-                        ▼
-
-        MongoDB / PostgreSQL / MySQL
-```
-
----
-
-# 22. Self Hosted Architecture
-
-```
-Customer
-
-↓
-
-Docker Compose
-
-↓
-
-Identity Platform
-
-↓
-
-MongoDB
-```
-
-or
-
-```
-Customer
-
-↓
-
-Docker Compose
-
-↓
-
-Identity Platform
-
-↓
-
-PostgreSQL
-```
-
-or
-
-```
-Customer
-
-↓
-
-Docker Compose
-
-↓
-
-Identity Platform
-
-↓
-
-MySQL
-```
-
-Only configuration changes.
-
-Business logic remains identical.
-
----
-
-# Summary
-
-The Identity Platform is built around a hierarchy:
+Future architecture:
 
 ```
 Tenant
 
-↓
+├── Users
 
-Application
+├── Roles
 
-↓
+├── Permissions
 
-Organization
+├── Applications
+
+├── API Keys
+
+├── Sessions
+
+└── Audit Logs
+```
+
+Each resource belongs to exactly one tenant.
+
+---
+
+## User Relationships
+
+Future design:
+
+```
+Tenant
 
 ↓
 
 Users
+
+↓
+
+Sessions
+
+↓
+
+Authentication
+```
+
+A user should never belong to multiple tenants unless explicitly supported by future requirements.
+
+---
+
+## Role Relationships
+
+Future design:
+
+```
+Tenant
 
 ↓
 
@@ -929,14 +511,257 @@ Roles
 Permissions
 ```
 
-This hierarchy enables:
+Role definitions remain independent for each organization.
 
-- Secure multi-tenancy
-- Complete data isolation
-- Hosted SaaS deployments
-- Self-hosted deployments
-- Unlimited applications
-- Unlimited organizations
-- Enterprise scalability
+---
 
-The same core architecture serves both deployment models by changing infrastructure and configuration rather than application logic.
+# 9. Tenant Lifecycle
+
+Typical lifecycle:
+
+```
+Create Tenant
+
+↓
+
+Configure Settings
+
+↓
+
+Create Applications
+
+↓
+
+Invite Users
+
+↓
+
+Assign Roles
+
+↓
+
+Begin Authentication
+```
+
+Future onboarding may automate several of these steps.
+
+---
+
+## Tenant Deletion
+
+Future implementations should support:
+
+- Soft Delete
+- Account Suspension
+- Data Export
+- Permanent Removal
+
+These operations are not currently implemented.
+
+---
+
+# 10. Security Considerations
+
+---
+
+## Tenant Isolation
+
+Every query should include tenant filtering.
+
+This is the most important security requirement for multi-tenant systems.
+
+---
+
+## Authorization
+
+Permission evaluation should always occur within the current tenant.
+
+Future flow:
+
+```
+Authenticated User
+
+↓
+
+Current Tenant
+
+↓
+
+Permissions
+
+↓
+
+Authorization
+```
+
+---
+
+## Audit Logging
+
+Audit events should include:
+
+```
+Tenant ID
+
+User
+
+Action
+
+Timestamp
+```
+
+This enables tenant-specific audit history.
+
+---
+
+## API Keys
+
+API Keys already inherit tenant ownership through their associated application.
+
+Future authorization should ensure keys cannot access resources outside their tenant.
+
+---
+
+## Cross-Tenant Protection
+
+Future repository implementations should prevent queries that omit tenant filtering.
+
+This reduces the risk of accidental cross-tenant access.
+
+---
+
+# 11. Current Status
+
+## Implemented
+
+✅ Tenant Module
+
+✅ Tenant Entity
+
+✅ Application Ownership
+
+✅ API Key Ownership
+
+✅ Tenant Resolution Middleware
+
+✅ Foundation for SaaS Deployments
+
+---
+
+## Partially Implemented
+
+- Tenant-aware middleware exists.
+- Applications are tenant-scoped.
+- Remaining modules are still global.
+
+---
+
+## Not Implemented
+
+- Tenant-scoped Users
+- Tenant-scoped Roles
+- Tenant-scoped Permissions
+- Tenant-scoped Sessions
+- Tenant-scoped Audit Logs
+- Tenant-scoped Authentication
+- Tenant Billing
+- Organization Invitations
+- Custom Domains
+- Enterprise SSO
+
+---
+
+# 12. Future Improvements
+
+## Complete Tenant Isolation
+
+Every tenant-owned model should include:
+
+```
+tenantId
+```
+
+Repositories should automatically enforce tenant filtering.
+
+---
+
+## Tenant Provisioning
+
+Future onboarding:
+
+```
+Create Tenant
+
+↓
+
+Create Default Roles
+
+↓
+
+Create Default Permissions
+
+↓
+
+Create Default Application
+
+↓
+
+Ready
+```
+
+---
+
+## Custom Domains
+
+Support:
+
+```
+auth.company.com
+
+↓
+
+Tenant
+```
+
+---
+
+## Enterprise Identity
+
+Future enterprise capabilities include:
+
+- SAML
+- SCIM
+- LDAP
+- OpenID Connect
+- Active Directory Integration
+
+---
+
+## Billing & Subscription
+
+Future SaaS features:
+
+- Subscription Plans
+- Usage Limits
+- Seat Management
+- Payment Integration
+
+---
+
+## Organization Management
+
+Future features include:
+
+- Teams
+- Departments
+- Invitations
+- Organization Ownership
+- Tenant Administration
+
+---
+
+# Multi-Tenant Summary
+
+Aegis already includes the foundational building blocks for a hosted SaaS identity platform through its Tenant, Application, and API Key architecture.
+
+At present, Applications are tenant-scoped while identity resources such as Users, Roles, Permissions, Sessions, and Audit Logs remain global. The architecture is intentionally designed so these resources can be fully tenant-isolated in future releases without requiring major changes to the application's overall structure.

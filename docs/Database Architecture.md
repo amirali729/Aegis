@@ -1,8 +1,8 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the current implementation (MongoDB implemented with repository abstraction. Multi-database support is planned but not yet implemented.)
 >
 > Document: 05 - Database Architecture
 
@@ -10,673 +10,889 @@
 
 # Table of Contents
 
-1. Introduction
-2. Goals
-3. Supported Databases
-4. Design Philosophy
-5. Layered Database Architecture
-6. Repository vs Data Provider
-7. Storage Providers
-8. Entity Mapping
-9. Database Selection
-10. Self Hosted
-11. SaaS
-12. Migrations
-13. Future Improvements
+1. Database Overview
+2. Database Goals
+3. Database Architecture
+4. Repository Pattern
+5. Current Database Implementation
+6. Core Collections
+7. Relationships
+8. Database Transactions
+9. Data Integrity
+10. Performance Considerations
+11. Current Status
+12. Future Improvements
 
 ---
 
-# 1. Introduction
+# 1. Database Overview
 
-The Identity Platform must support multiple databases while keeping the business logic identical.
+The database layer is responsible for persisting all identity-related data while remaining isolated from business logic.
 
-Supported databases include
+The application currently uses **MongoDB** with **Mongoose**, but the architecture is intentionally designed so business logic is not tightly coupled to MongoDB.
 
-- MongoDB
-- PostgreSQL
-- MySQL
-
-Every feature should work regardless of which database is selected.
+The long-term goal is to support multiple database providers without changing controllers or services.
 
 ---
 
-# 2. Goals
+# Responsibilities
 
-The database architecture should satisfy these requirements.
+The database stores:
 
-✓ Multiple database engines
+- Users
+- Sessions
+- Roles
+- Permissions
+- Applications
+- API Keys
+- Tenants
+- Audit Logs
+- Email Verification Tokens
+- Password Reset Tokens
 
-✓ One business logic implementation
+The database does **not** store business-domain data such as:
 
-✓ Easy provider replacement
-
-✓ Strong typing
-
-✓ Easy testing
-
-✓ No duplicated authentication logic
-
----
-
-# 3. Supported Databases
-
-Initially
-
-```
-MongoDB
-```
-
-Future
-
-```
-PostgreSQL
-
-MySQL
-```
-
-Only one database is active at runtime.
+- Products
+- Orders
+- Payments
+- Inventory
+- Blog Posts
 
 ---
 
-# 4. Design Philosophy
+# 2. Database Goals
 
-Business logic should never know which database is being used.
-
-For example
-
-```
-AuthRepository
-```
-
-should not contain
-
-```ts
-mongoose.findOne(...)
-```
-
-or
-
-```ts
-SELECT * FROM users
-```
-
-Instead it communicates with an abstraction.
+The database architecture follows several principles.
 
 ---
 
-# 5. Layered Architecture
+## Database Agnostic Design
+
+Business logic should never depend on MongoDB APIs.
+
+Instead:
 
 ```
 Controller
 
 ↓
 
-Auth Repository
+Service
 
 ↓
 
-User Storage Interface
+Repository Interface
 
 ↓
 
-Mongo Provider
-
-or
-
-PostgreSQL Provider
-
-or
-
-MySQL Provider
+Repository Implementation
 
 ↓
 
-Database
+MongoDB
 ```
 
-Notice that the repository doesn't know which provider is active.
+Future implementations can replace MongoDB without affecting upper layers.
 
 ---
 
-# 6. Why Separate Them?
+## Separation of Concerns
 
-Many developers accidentally duplicate business logic.
+Repositories own persistence.
 
-Wrong approach
+Services own business rules.
 
-```
-MongoAuthRepository
+Controllers own request orchestration.
 
-PostgresAuthRepository
-
-MysqlAuthRepository
-```
-
-Now Login exists three times.
-
-Signup exists three times.
-
-Logout exists three times.
-
-Refresh exists three times.
-
-Password Change exists three times.
-
-Every bug must be fixed three times.
-
-Avoid this.
+Each layer has a single responsibility.
 
 ---
 
-Correct approach
+## Scalability
+
+The schema is designed to support:
 
 ```
-AuthRepository
+10 Users
 
 ↓
 
-UserStorage Interface
+1,000 Users
 
 ↓
 
-Mongo Provider
+100,000 Users
 
 ↓
 
-Postgres Provider
-
-↓
-
-Mysql Provider
+Millions of Users
 ```
 
-Authentication logic exists only once.
-
-Only database operations change.
+without major architectural changes.
 
 ---
 
-# 7. Storage Layer
+## Security
+
+Sensitive values are never stored in plaintext.
+
+Examples include:
+
+- Passwords
+- Refresh Tokens
+- API Keys
+- Verification Tokens
+- Password Reset Tokens
+
+---
+
+# 3. Database Architecture
+
+Current architecture:
+
+```
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository
+
+↓
+
+Mongoose Model
+
+↓
+
+MongoDB
+```
+
+Repositories hide all database-specific operations.
+
+Controllers and services never interact with Mongoose directly.
+
+---
+
+## Planned Architecture
+
+Future database providers:
+
+```
+Repository
+
+↓
+
+Database Provider
+
+├── MongoDB
+
+├── PostgreSQL
+
+└── MySQL
+```
+
+Only one provider would be active at runtime.
+
+---
+
+# 4. Repository Pattern
+
+Every module owns its own repository.
 
 Example
 
 ```
+Auth
+
+↓
+
+IAuthRepository
+
+↓
+
 AuthRepository
 
 ↓
 
-userStorage.findByEmail()
+User Model
+```
 
-↓
+---
 
-MongoUserStorage
+## Repository Responsibilities
 
-↓
+Repositories only perform:
 
+- Create
+- Read
+- Update
+- Delete
+- Queries
+
+Repositories never perform:
+
+- Password validation
+- JWT creation
+- Permission evaluation
+- Business decisions
+
+Those responsibilities belong to services.
+
+---
+
+## Error Handling
+
+Repositories return:
+
+```
+Result<T, InfrastructureError>
+```
+
+Database failures are translated into infrastructure errors rather than leaking database-specific exceptions.
+
+---
+
+# 5. Current Database Implementation
+
+The current implementation uses:
+
+```
 MongoDB
-```
-
-or
-
-```
-AuthRepository
 
 ↓
 
-userStorage.findByEmail()
-
-↓
-
-PostgresUserStorage
-
-↓
-
-PostgreSQL
-```
-
-Same business logic.
-
-Different storage implementation.
-
----
-
-# 8. User Storage Interface
-
-```
-UserStorage
-
-findById()
-
-findByEmail()
-
-findByUsername()
-
-create()
-
-save()
-
-update()
-
-delete()
-```
-
-Every provider implements these methods.
-
----
-
-# 9. MongoDB Provider
-
-```
-MongoUserStorage
-```
-
-Uses
-
-```
 Mongoose
 
-Schemas
+↓
 
-Documents
+Module Models
 ```
 
-Only this provider knows Mongoose.
+Each business module owns its own schema.
+
+Example
+
+```
+modules/
+
+auth/model/user.model.ts
+
+role/model/role.model.ts
+
+permission/model/permission.model.ts
+
+session/model/session.model.ts
+
+application/model/application.model.ts
+
+apikey/model/apikey.model.ts
+
+tenant/model/tenant.model.ts
+
+audit/model/audit.model.ts
+```
+
+This keeps schemas close to the business capability they represent.
 
 ---
 
-# 10. PostgreSQL Provider
+## Database Connection
+
+The active connection lives in:
 
 ```
-PostgresUserStorage
+src/shared/database/dbconnection.ts
 ```
 
-Uses
-
-```
-SQL
-
-Relations
-
-Transactions
-```
-
-Only this provider knows SQL.
+The connection is initialized during application startup before the server begins accepting requests.
 
 ---
 
-# 11. MySQL Provider
-
-```
-MysqlUserStorage
-```
-
-Uses
-
-```
-MySQL Driver
-
-Queries
-
-Transactions
-```
-
-Again,
-
-Business logic never changes.
+# 6. Core Collections
 
 ---
 
-# 12. Example
+## Users
 
-Repository
+Stores user identity.
 
-```
-login()
-
-↓
-
-find user
-
-↓
-
-verify password
-
-↓
-
-generate tokens
-
-↓
-
-save refresh token
-
-↓
-
-return LoginResponse
-```
-
-The only different part
+Typical information includes:
 
 ```
-find user
+Email
+
+Username
+
+Password Hash
+
+Email Verified
+
+Roles
+
+Profile Information
+
+Created At
+
+Updated At
 ```
 
-Mongo
-
-```
-User.findOne(...)
-```
-
-Postgres
-
-```
-SELECT ...
-```
-
-MySQL
-
-```
-SELECT ...
-```
-
-Everything else is identical.
+Passwords are always stored as bcrypt hashes.
 
 ---
 
-# 13. Folder Structure
+## Sessions
+
+Each login creates a session.
+
+Stores:
 
 ```
-database/
+User
 
-provider/
+Hashed Refresh Token
 
-user-storage.interface.ts
+Device
 
-role-storage.interface.ts
+User Agent
 
-session-storage.interface.ts
+IP Address
 
-mongodb/
+Created At
 
-mongo-user-storage.ts
+Last Used
 
-mongo-role-storage.ts
+Expires At
 
-mongo-session-storage.ts
-
-postgres/
-
-postgres-user-storage.ts
-
-postgres-role-storage.ts
-
-postgres-session-storage.ts
-
-mysql/
-
-mysql-user-storage.ts
-
-mysql-role-storage.ts
-
-mysql-session-storage.ts
+Revoked At
 ```
+
+The raw refresh token is never stored.
 
 ---
 
-# 14. Provider Factory
+## Roles
 
-Only one provider is selected.
+Stores authorization roles.
+
+Example
 
 ```
-DATABASE_PROVIDER
+Admin
+
+Manager
+
+Support
+
+Editor
+```
+
+Roles contain permission references.
+
+---
+
+## Permissions
+
+Stores individual capabilities.
+
+Examples
+
+```
+user:create
+
+user:update
+
+role:create
+
+audit:view
+```
+
+Permissions remain independent of users.
+
+---
+
+## Applications
+
+Represents client applications integrating with Aegis.
+
+Stores:
+
+```
+Application Name
+
+Client ID
+
+Client Secret
+
+Allowed Origins
+
+Redirect URIs
+
+Tenant
+
+Token Settings
+```
+
+Currently, `allowedOrigins` and `redirectUris` are stored but not yet enforced by an OAuth flow.
+
+---
+
+## API Keys
+
+Stores server-to-server credentials.
+
+Each key contains:
+
+```
+Application
+
+Name
+
+Key Prefix
+
+Hashed Key
+
+Expiry
+
+Status
+
+Last Used
+```
+
+Only the SHA-256 hash is persisted.
+
+---
+
+## Tenants
+
+Represents SaaS customers.
+
+Current implementation primarily scopes Applications.
+
+Future versions will scope all tenant-owned resources.
+
+---
+
+## Audit Logs
+
+Stores append-only security events.
+
+Current events include:
+
+- Signup
+- Login
+- Logout All
+- Password Change
+- Password Reset
+
+Additional events will be added in future releases.
+
+---
+
+# 7. Relationships
+
+Current relationship overview:
+
+```
+Tenant
+
+│
+
+├── Applications
+
+│      │
+
+│      └── API Keys
+
+│
+
+Users
+
+│
+
+├── Roles
+
+│      │
+
+│      └── Permissions
+
+│
+
+└── Sessions
+```
+
+Audit logs reference users and related actions.
+
+---
+
+## Authentication Relationships
+
+```
+User
 
 ↓
 
-mongodb
+Sessions
 
 ↓
 
-MongoUserStorage
+Refresh Tokens
+```
+
+One user can have many active sessions.
+
+---
+
+## Authorization Relationships
+
+```
+User
+
+↓
+
+Roles
+
+↓
+
+Permissions
+```
+
+A user may have multiple roles.
+
+Each role may contain multiple permissions.
+
+---
+
+# 8. Database Transactions
+
+Most operations currently consist of a single document update and therefore do not require database transactions.
+
+Examples:
+
+- Login
+- Logout
+- Session Creation
+- Password Change
+
+---
+
+## Future Transaction Usage
+
+Multi-document operations may use MongoDB transactions where appropriate.
+
+Examples:
+
+```
+Create User
+
++
+
+Create Audit Log
+
++
+
+Create Default Resources
 ```
 
 or
 
 ```
-postgres
+Create Application
 
-↓
++
 
-PostgresUserStorage
-```
-
-or
-
-```
-mysql
-
-↓
-
-MysqlUserStorage
+Create Initial API Key
 ```
 
 ---
 
-# 15. Environment Configuration
+# 9. Data Integrity
+
+The platform follows several integrity rules.
+
+---
+
+## Unique Constraints
+
+Examples include:
+
+- Email
+- Username
+- Client ID
+- API Key Prefix (where applicable)
+
+These prevent duplicate identities.
+
+---
+
+## Hashing
+
+Sensitive values are hashed before persistence.
 
 ```
-DATABASE_PROVIDER=mongodb
-```
+Passwords
 
-or
+↓
 
-```
-DATABASE_PROVIDER=postgres
-```
+bcrypt
 
-or
+-----------------
 
-```
-DATABASE_PROVIDER=mysql
+Refresh Tokens
+
+↓
+
+SHA-256
+
+-----------------
+
+API Keys
+
+↓
+
+SHA-256
+
+-----------------
+
+Verification Tokens
+
+↓
+
+SHA-256
+
+-----------------
+
+Reset Tokens
+
+↓
+
+SHA-256
 ```
 
 ---
 
-# 16. Dependency Injection
+## Validation
 
-Application startup
+Incoming requests are validated using Zod before reaching repositories.
 
-```
-MongoUserStorage
-
-↓
-
-AuthRepository
-
-↓
-
-AuthController
-```
-
-Changing providers only changes one line during startup.
+This prevents invalid data from entering the database.
 
 ---
 
-# 17. Entity Mapping
+## Soft vs Hard Delete
 
-Each provider converts its database representation into a common domain object.
+Current implementation primarily uses direct deletion where appropriate.
 
-Mongo
-
-```
-Mongoose Document
-
-↓
-
-Domain User
-```
-
-Postgres
-
-```
-SQL Row
-
-↓
-
-Domain User
-```
-
-MySQL
-
-```
-SQL Row
-
-↓
-
-Domain User
-```
-
-Everything above the storage layer only works with the domain object.
+Future enterprise deployments may adopt soft-delete strategies for selected resources.
 
 ---
 
-# 18. Migrations
+# 10. Performance Considerations
 
-Mongo
+Current design already supports:
 
-No migrations required.
-
-PostgreSQL
-
-Use migration files.
-
-MySQL
-
-Use migration files.
-
-Every provider manages its own schema.
+- Independent collections
+- Repository isolation
+- Efficient session lookups
+- Permission evaluation
+- API Key lookup
+- JWT verification without database access
 
 ---
 
-# 19. SaaS Deployment
+## Future Optimizations
 
-Our hosted platform will use
+Future improvements include:
+
+### Redis Cache
+
+```
+Permission Evaluation
+
+↓
+
+Redis
+
+↓
+
+Application
+```
+
+---
+
+### Read Replicas
+
+Large deployments may separate:
+
+```
+Writes
+
+↓
+
+Primary Database
+
+Reads
+
+↓
+
+Read Replicas
+```
+
+---
+
+### Multi-Database Support
+
+Future providers:
 
 ```
 MongoDB
-```
-
-only.
-
-Customers never see this.
-
-They only consume APIs.
-
----
-
-# 20. Self Hosted
-
-Users may choose
-
-```
-MongoDB
 
 PostgreSQL
 
 MySQL
 ```
 
-by changing
+---
 
-```
-DATABASE_PROVIDER
-```
+### Index Optimization
 
-and starting Docker Compose.
+Additional indexes may be introduced for:
 
-No source code modifications are required.
+- Sessions
+- Audit Logs
+- API Keys
+- Tenant Queries
 
 ---
 
-# 21. Future Database Providers
+# 11. Current Status
 
-The architecture allows adding
+## Implemented
 
-```
-SQLite
+✅ MongoDB
 
-CockroachDB
+✅ Mongoose Models
 
-MariaDB
+✅ Repository Pattern
 
-Azure SQL
+✅ Module-Owned Schemas
 
-Amazon Aurora
-```
+✅ Session Storage
 
-without changing authentication logic.
+✅ Role Storage
 
-Only a new storage provider is implemented.
+✅ Permission Storage
 
----
+✅ Application Storage
 
-# Final Architecture
+✅ API Key Storage
 
-```
-                   Controller
+✅ Tenant Storage
 
-                        │
+✅ Audit Log Storage
 
-                        ▼
+✅ Password Hashing
 
-                AuthRepository
-
-                        │
-
-                        ▼
-
-             IUserStorage Interface
-
-         ┌──────────────┼──────────────┐
-
-         ▼              ▼              ▼
-
-MongoUserStorage  PostgresUserStorage  MysqlUserStorage
-
-         │              │              │
-
-         ▼              ▼              ▼
-
-     MongoDB       PostgreSQL       MySQL
-```
+✅ Refresh Token Hashing
 
 ---
 
-# Key Design Rules
+## Partially Implemented
 
-✓ Business logic exists only once.
-
-✓ Database logic exists inside providers.
-
-✓ Controllers never access databases.
-
-✓ Repositories never know the database engine.
-
-✓ Storage providers never contain business rules.
-
-✓ Adding a new database should require creating only a new provider.
+- Repository abstraction exists, but only MongoDB is implemented.
+- Multi-tenant isolation currently applies primarily to Applications.
 
 ---
 
-# Summary
+## Not Implemented
 
-The Identity Platform separates **business logic** from **data access**.
+- PostgreSQL Provider
+- MySQL Provider
+- Database Provider Factory
+- Cross-Database Abstraction Layer
+- Redis Cache
+- Read Replicas
+- Database Sharding
 
-Authentication, authorization, sessions, and future modules all interact with storage interfaces rather than database-specific APIs.
+---
 
-This architecture enables:
+# 12. Future Improvements
 
-- One codebase
-- Multiple databases
-- Minimal code duplication
-- Easier testing
-- Easier maintenance
-- Clean support for both Hosted SaaS and Self-Hosted deployments
+## Multi-Database Support
+
+Implement providers for:
+
+- PostgreSQL
+- MySQL
+
+without changing business logic.
+
+---
+
+## Complete Tenant Isolation
+
+Every tenant-owned document should include:
+
+```
+tenantId
+```
+
+Every query should automatically filter by tenant.
+
+---
+
+## Distributed Caching
+
+Introduce Redis for:
+
+- Permission Caching
+- Session Caching
+- Rate Limiting
+
+---
+
+## Audit Expansion
+
+Persist additional events including:
+
+- Role Changes
+- Permission Changes
+- API Key Operations
+- Tenant Operations
+- Application Operations
+
+---
+
+## Production Scaling
+
+Future infrastructure may include:
+
+```
+Application
+
+↓
+
+Redis
+
+↓
+
+MongoDB Replica Set
+
+↓
+
+Backups
+
+↓
+
+Monitoring
+```
+
+---
+
+# Database Summary
+
+The current database architecture is built around MongoDB, Mongoose, and the Repository Pattern, providing a clean separation between persistence and business logic.
+
+Sensitive data is securely hashed before storage, repositories isolate database access, and each business capability owns its own schema. The architecture is intentionally designed to support future database providers such as PostgreSQL and MySQL while keeping services and controllers unchanged.

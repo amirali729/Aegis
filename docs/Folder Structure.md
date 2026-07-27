@@ -751,57 +751,23 @@ API reference documentation is also generated live from the running server at `/
 
 # 12. Testing
 
-```
-tests/
+`tests/` exists as an empty top-level scaffold in this snapshot - no tests currently ship in this copy of the project.
 
-unit/
-
-integration/
-
-e2e/
-
-fixtures/
-
-helpers/
-```
-
----
-
-## unit/
-
-Repository tests.
-
-Controller tests.
-
-Utility tests.
-
----
-
-## integration/
-
-Database tests.
-
----
-
-## e2e/
-
-Full API testing.
+When tests were written for the auth module, the convention used was:
 
 ```
-POST /signup
+src/test/unit-test/<module-name>/
 
-↓
+<module>.repository.test.ts
 
-POST /login
+<module>.service.test.ts
 
-↓
+<module>.controller.test.ts
 
-POST /refresh
-
-↓
-
-POST /logout
+<module>.routes.test.ts
 ```
+
+using Vitest, with Mongoose models mocked directly (no real database dependency for unit tests) and Supertest for route-level tests. `tsconfig.test.json` type-checks `src/test/` separately so test files never leak into the production `dist/` build (the main `tsconfig.json` excludes `src/test`).
 
 ---
 

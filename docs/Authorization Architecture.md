@@ -1,74 +1,111 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the current implementation (RBAC fully implemented using Roles, Permissions, Permission Evaluation Middleware, Applications, and API Keys)
 >
-> Document: 07 - Authorization Architecture
+> Document: 06 - Authorization Architecture
 
 ---
 
 # Table of Contents
 
-1. Introduction
-2. Authentication vs Authorization
-3. Authorization Goals
-4. RBAC
-5. Permission Model
-6. Policy Model
-7. Resources
-8. Organizations
-9. Multi-Tenant Authorization
-10. Permission Evaluation
-11. Middleware
-12. Future Authorization
+1. Authorization Overview
+2. Authorization Goals
+3. Authorization Flow
+4. Authorization Components
+5. Roles
+6. Permissions
+7. Permission Evaluation
+8. Route Protection
+9. API Key Authorization
+10. Multi-Tenant Authorization
+11. Security Considerations
+12. Current Status
+13. Future Improvements
 
 ---
 
-# 1. Introduction
+# 1. Authorization Overview
+
+Authorization determines **what an authenticated user is allowed to do**.
 
 Authentication answers:
 
-> Who are you?
+> **Who are you?**
 
 Authorization answers:
 
-> What are you allowed to do?
+> **What are you allowed to access?**
 
-These are two completely different systems.
+The two systems are completely independent.
 
-Authentication creates identity.
-
-Authorization decides access.
+Authentication must succeed before authorization begins.
 
 ---
 
-# 2. Authentication vs Authorization
+# Responsibilities
 
-```
-Authentication
+The Authorization module currently manages:
 
-↓
+- Roles
+- Permissions
+- Role Assignment
+- Permission Assignment
+- Permission Evaluation
+- Route Protection
+- API Key Authorization
 
-Identity
+Future responsibilities include:
 
-↓
+- Attribute-Based Access Control (ABAC)
+- Policy Engine
+- Organization-level Permissions
+- Resource Ownership Rules
+- Conditional Access Policies
 
-Authorization
+---
 
-↓
+# 2. Authorization Goals
 
-Permissions
-```
+The authorization system was designed around several principles.
+
+## Least Privilege
+
+Every user should receive only the permissions they require.
 
 Example
 
 ```
-Login
+Support Agent
 
 ↓
 
-User
+Read Users
+
+Reset Passwords
+
+View Sessions
+
+×
+
+Delete Users
+
+×
+
+Manage Roles
+```
+
+---
+
+## Role-Based Access Control
+
+Permissions are assigned to roles.
+
+Users receive permissions indirectly through their assigned roles.
+
+```
+Permission
 
 ↓
 
@@ -76,51 +113,118 @@ Role
 
 ↓
 
-Permission
+User
+```
+
+This simplifies permission management.
+
+---
+
+## Centralized Permission Evaluation
+
+Permissions should never be checked manually inside controllers.
+
+Instead, authorization should happen before business logic executes.
+
+---
+
+## Extensible Design
+
+The system should allow future authorization models without rewriting the existing implementation.
+
+Examples
+
+- ABAC
+- Policy Engine
+- Resource Ownership
+- Tenant Isolation
+
+---
+
+# 3. Authorization Flow
+
+Every protected request follows the same flow.
+
+```
+Client
 
 ↓
 
-API Access
+JWT Verification
+
+↓
+
+Authenticated User
+
+↓
+
+Permission Middleware
+
+↓
+
+Permission Evaluator
+
+↓
+
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository
+
+↓
+
+Response
 ```
 
-Authentication happens once.
-
-Authorization happens on every protected request.
+If permission evaluation fails, the request never reaches the controller.
 
 ---
 
-# 3. Authorization Goals
+# 4. Authorization Components
 
-The authorization system must support
+```
+Authorization
 
-✓ Unlimited Roles
+├── Roles
 
-✓ Unlimited Permissions
+├── Permissions
 
-✓ Multiple Roles per User
+├── Permission Assignment
 
-✓ Multiple Permissions per Role
+├── Role Assignment
 
-✓ Custom Permissions
+├── Permission Evaluation
 
-✓ Organizations
+├── Route Protection
 
-✓ Future Policies
+└── API Key Authorization
+```
 
-✓ Multi-Tenant Support
+Supporting modules:
 
-✓ API Protection
+- Authentication
+- Session
+- Tenant
+- Audit
+- Application
 
 ---
 
-# 4. Role-Based Access Control (RBAC)
+# 5. Roles
 
-The platform uses RBAC.
+Roles are collections of permissions.
 
-Relationship
+Users never receive application capabilities directly.
+
+Instead:
 
 ```
-User
+Permission
 
 ↓
 
@@ -128,7 +232,7 @@ Role
 
 ↓
 
-Permission
+User
 ```
 
 Example
@@ -147,149 +251,91 @@ user:delete
 role:create
 
 role:update
-```
 
-Editor
-
-↓
-
-```
-post:create
-
-post:update
-```
-
-Viewer
-
-↓
-
-```
-post:read
+role:delete
 ```
 
 ---
 
-# 5. Database Relationships
+## Role Lifecycle
 
 ```
-User
+Create Role
 
 ↓
 
-UserRole
+Assign Permissions
 
 ↓
 
-Role
+Assign Users
 
 ↓
 
-RolePermission
-
-↓
-
-Permission
+Permission Evaluation
 ```
-
-Many-to-many relationships.
-
-One user
-
-↓
-
-Many roles
-
-One role
-
-↓
-
-Many permissions
-
-One permission
-
-↓
-
-Many roles
 
 ---
 
-# 6. User Model
+## Example Roles
 
-Instead of
+The platform supports custom roles.
 
-```ts
-role: 'user' | 'admin';
-```
-
-Future model
-
-```ts
-roles: RoleId[]
-```
-
-Example
-
-```
-User
-
-↓
-
-Admin
-
-↓
-
-Support
-```
-
-One user may belong to multiple roles.
-
----
-
-# 7. Role Model
-
-```
-Role
-
-id
-
-name
-
-description
-
-tenantId
-
-createdAt
-
-updatedAt
-```
-
-Examples
+Typical examples include:
 
 ```
 Admin
 
 Manager
 
-Employee
+Editor
 
-Student
+Support
 
-Teacher
-
-Doctor
-
-Receptionist
+Viewer
 ```
 
-No hardcoded roles.
+No roles are hardcoded.
+
+Everything is stored in the database.
 
 ---
 
-# 8. Permission Model
+# 6. Permissions
 
-Permissions describe actions.
+Permissions represent individual capabilities.
 
-Recommended format
+Examples
+
+```
+user:create
+
+user:update
+
+user:delete
+
+role:create
+
+role:update
+
+permission:assign
+
+application:create
+
+apikey:create
+
+audit:view
+
+session:revoke
+```
+
+Each permission should describe a single action.
+
+---
+
+## Permission Naming
+
+Permissions follow a consistent pattern.
 
 ```
 resource:action
@@ -302,209 +348,53 @@ user:create
 
 user:update
 
-user:delete
+tenant:create
 
-user:view
+application:update
 
-role:update
-
-role:delete
-
-invoice:create
-
-invoice:update
-
-invoice:delete
-
-inventory:view
-
-inventory:update
+apikey:revoke
 ```
 
-This format scales well.
+This keeps authorization predictable and easy to understand.
 
 ---
 
-# 9. Permission Categories
+# Permission Assignment
 
-Authentication
-
-```
-auth:login
-
-auth:logout
-
-auth:refresh
-```
-
-User
+Permissions are assigned only to roles.
 
 ```
-user:create
+Permission
 
-user:update
-
-user:view
-
-user:delete
-```
+↓
 
 Role
 
-```
-role:create
-
-role:update
-
-role:view
-
-role:delete
-```
-
-Application
-
-```
-application:create
-
-application:update
-```
-
-Audit
-
-```
-audit:view
-```
-
-API Key
-
-```
-apikey:create
-
-apikey:delete
-```
-
----
-
-# 10. Role Examples
-
-Admin
-
-```
-All permissions
-```
-
-Support
-
-```
-user:view
-
-user:update
-
-audit:view
-```
-
-Developer
-
-```
-application:create
-
-apikey:create
-
-webhook:update
-```
-
-Viewer
-
-```
-user:view
-
-role:view
-```
-
----
-
-# 11. Permission Evaluation
-
-Incoming request
-
-↓
-
-JWT
-
 ↓
 
 User
-
-↓
-
-Roles
-
-↓
-
-Permissions
-
-↓
-
-Decision
-
-Diagram
-
-```
-JWT
-
-↓
-
-User
-
-↓
-
-Roles
-
-↓
-
-Permissions
-
-↓
-
-Allowed?
-
-↓
-
-YES
-
-↓
-
-Controller
 ```
 
-or
-
-```
-NO
-
-↓
-
-403 Forbidden
-```
+Users inherit every permission from every assigned role.
 
 ---
 
-# 12. Authorization Middleware
+# 7. Permission Evaluation
 
-Example
-
-```
-requirePermission(
-
-"user:update"
-
-)
-```
+Permission evaluation happens before controller execution.
 
 Flow
 
 ```
+Request
+
+↓
+
 verifyJwt
+
+↓
+
+Authenticated User
 
 ↓
 
@@ -512,351 +402,132 @@ Load Roles
 
 ↓
 
-Load Permissions
+Collect Permissions
 
 ↓
 
-Permission Exists?
+Union Permissions
 
 ↓
 
-Allow
+Permission Check
 
-or
+↓
 
-Reject
+Allow / Deny
 ```
+
+The platform evaluates the complete permission set across all assigned roles.
 
 ---
 
-# 13. Multiple Roles
+## Permission Evaluator
 
-One user
+Current implementation uses a centralized permission evaluator.
 
-```
-Manager
+Responsibilities include:
 
-+
+- Reading user roles
+- Collecting permissions
+- Removing duplicates
+- Returning the final permission set
 
-Support
-
-+
-
-HR
-```
-
-Permissions become
-
-```
-Manager
-
-↓
-
-Create Reports
-
-Support
-
-↓
-
-View Users
-
-HR
-
-↓
-
-Update Employees
-```
-
-The final permission set is the union of all permissions.
+Controllers never perform permission calculations.
 
 ---
 
-# 14. Organizations
+## Multiple Roles
 
-Future
-
-One company
-
-↓
-
-Many organizations
-
-```
-Acme
-
-↓
-
-Engineering
-
-↓
-
-Finance
-
-↓
-
-Support
-```
-
-Each organization has
-
-Roles
-
-Permissions
-
-Users
-
-independently.
-
----
-
-# 15. Multi-Tenant Authorization
-
-Hosted SaaS
-
-```
-Tenant A
-
-↓
-
-Roles
-
-↓
-
-Permissions
-```
-
-Completely isolated from
-
-```
-Tenant B
-```
-
-No tenant can read another tenant's data.
-
----
-
-# 16. Policies
-
-Future
-
-Policies provide more flexible rules than RBAC.
+A user may have multiple roles.
 
 Example
 
 ```
-Manager
+User
 
-can approve
+↓
 
-ONLY
+Editor
 
-department == own department
-```
+↓
 
-Another
-
-```
 Support
 
-can view tickets
+↓
 
-ONLY
+Final Permission Set
 
-assigned to them
+↓
+
+Union(Editor, Support)
 ```
 
-This is Attribute-Based Access Control (ABAC).
+Duplicate permissions are automatically ignored.
 
 ---
 
-# 17. Resource Ownership
+# 8. Route Protection
+
+Protected routes declare required permissions.
 
 Example
 
-User owns
-
 ```
-Post #25
-```
-
-Permission
-
-```
-post:update
-```
-
-Policy
-
-```
-owner == currentUser
-```
-
-Allow
-
-Otherwise
-
-Reject
-
----
-
-# 18. Permission Cache
-
-Future
-
-Permissions should be cached.
-
-```
-JWT
-
-↓
-
-Redis
-
-↓
-
-Permissions
-
-↓
-
-Response
-```
-
-Avoid querying the database on every request.
-
----
-
-# 19. Dashboard
-
-Administrators can create
-
-Roles
-
-↓
-
-Assign Permissions
-
-↓
-
-Assign Users
-
-↓
-
-Save
-
-No code changes required.
-
----
-
-# 20. Public API
-
-Future endpoints
-
-```
-POST /roles
-
-GET /roles
-
-PATCH /roles/:id
-
-DELETE /roles/:id
-```
-
-Permissions
-
-```
-POST /permissions
-
-GET /permissions
-
-PATCH /permissions/:id
-
-DELETE /permissions/:id
-```
-
-Assignments
-
-```
-POST /users/:id/roles
-
-DELETE /users/:id/roles/:roleId
-```
-
----
-
-# 21. Future Enterprise Features
-
-Hierarchical Roles
-
-```
-Super Admin
-
-↓
-
-Admin
-
-↓
-
-Manager
-
-↓
-
-Employee
-```
-
-Inherited Permissions
-
-Temporary Roles
-
-Delegated Permissions
-
-Time-Based Permissions
-
-Location-Based Policies
-
-Approval Workflows
-
-External Identity Providers
-
-SCIM Synchronization
-
-LDAP Synchronization
-
-SAML Authorization
-
----
-
-# Authorization Flow
-
-```
-HTTP Request
-
-↓
-
 verifyJwt
 
 ↓
 
-Extract User ID
+requirePermission("user:create")
 
 ↓
 
-Load User Roles
+Controller
+```
+
+If the permission exists:
+
+```
+HTTP 200
+```
+
+Otherwise:
+
+```
+HTTP 403 Forbidden
+```
+
+Business logic never executes when authorization fails.
+
+---
+
+## Authorization Middleware
+
+Current middleware includes:
+
+```
+verifyJwt
 
 ↓
 
-Load Permissions
+requirePermission()
+```
+
+The middleware runs before controllers.
+
+---
+
+## Example Flow
+
+```
+GET /users
 
 ↓
 
-Evaluate Policies
+JWT Valid
 
 ↓
 
-Authorized?
-
-↓
-
-YES
+Permission Exists
 
 ↓
 
@@ -868,26 +539,397 @@ Repository
 
 ↓
 
-Database
+Response
+```
+
+Without permission:
+
+```
+GET /users
 
 ↓
 
-Response
+JWT Valid
+
+↓
+
+Permission Missing
+
+↓
+
+403 Forbidden
 ```
 
 ---
 
-# Summary
+# 9. API Key Authorization
 
-The Authorization module is responsible for determining what an authenticated user can do.
+The platform supports server-to-server authorization using API Keys.
 
-Its key principles are:
+Flow
 
-- Users can have multiple roles.
-- Roles contain multiple permissions.
-- Permissions are reusable.
-- Policies allow advanced access control.
-- Tenants isolate customer data.
-- Roles and permissions are configurable rather than hardcoded.
+```
+Application
 
-This design supports applications ranging from small personal projects to large enterprise systems without requiring changes to the core authorization engine.
+↓
+
+Generate API Key
+
+↓
+
+Store SHA-256 Hash
+
+↓
+
+Return Raw Key Once
+
+↓
+
+Client Sends
+
+X-API-Key
+
+↓
+
+Hash Incoming Key
+
+↓
+
+Compare Hash
+
+↓
+
+Authenticated Application
+```
+
+The raw API Key is never stored.
+
+---
+
+## API Key Information
+
+Each API Key stores:
+
+```
+Name
+
+Key Prefix
+
+Hashed Key
+
+Status
+
+Expiry
+
+Last Used
+
+Application
+```
+
+The visible prefix helps identify keys in dashboards and audit logs.
+
+---
+
+## Authorization
+
+API Keys authenticate applications rather than users.
+
+This is intended for:
+
+- Backend Services
+- Microservices
+- Automation
+- CLI Tools
+- Scheduled Jobs
+
+---
+
+# 10. Multi-Tenant Authorization
+
+The platform includes the foundation for tenant-aware authorization.
+
+Current state:
+
+```
+Tenant
+
+↓
+
+Applications
+
+↓
+
+API Keys
+```
+
+Applications belong to tenants.
+
+---
+
+## Current Limitation
+
+Only Applications are fully tenant-scoped today.
+
+The following resources are **not yet isolated**:
+
+- Users
+- Roles
+- Permissions
+- Audit Logs
+- Sessions
+
+These resources currently operate globally.
+
+---
+
+## Planned Flow
+
+Future authorization will automatically include:
+
+```
+Current Tenant
+
+↓
+
+Permission Evaluation
+
+↓
+
+Database Query
+
+↓
+
+Tenant Filter
+
+↓
+
+Authorized Data
+```
+
+Every tenant-owned resource will include:
+
+```
+tenantId
+```
+
+This prevents cross-tenant access.
+
+---
+
+# 11. Security Considerations
+
+The authorization layer follows several security principles.
+
+---
+
+## Default Deny
+
+Missing permission
+
+↓
+
+Access Denied
+
+Permissions are never assumed.
+
+---
+
+## No Hardcoded Roles
+
+Role names never determine access.
+
+Permissions determine access.
+
+---
+
+## Centralized Checks
+
+Controllers never implement authorization logic.
+
+Everything flows through middleware.
+
+---
+
+## Database Driven
+
+Roles and permissions are stored in the database.
+
+No code deployment is required when authorization changes.
+
+---
+
+## Audit Logging
+
+Current audit coverage includes authentication events.
+
+Future versions should also audit:
+
+- Role Creation
+- Role Updates
+- Role Assignment
+- Permission Assignment
+- Permission Removal
+- API Key Creation
+- API Key Revocation
+- Tenant Changes
+
+---
+
+## API Key Security
+
+API Keys are:
+
+- Randomly generated
+- SHA-256 hashed
+- Displayed once
+- Individually revocable
+- Independently expirable
+
+---
+
+# 12. Current Status
+
+## Implemented
+
+✅ Role Management
+
+✅ Permission Management
+
+✅ Role Assignment
+
+✅ Permission Assignment
+
+✅ Permission Evaluation
+
+✅ JWT Route Protection
+
+✅ Permission Middleware
+
+✅ API Key Authentication
+
+✅ Applications
+
+✅ Permission Union Across Multiple Roles
+
+---
+
+## Partially Implemented
+
+- Tenant-aware authorization exists only for Applications.
+- Audit logging does not yet cover all authorization events.
+
+---
+
+## Not Implemented
+
+- ABAC (Attribute-Based Access Control)
+- Policy Engine
+- Resource Ownership Rules
+- Organization-level Authorization
+- Conditional Access
+- Time-based Permissions
+- IP-based Authorization
+- Dynamic Permission Expressions
+
+---
+
+# 13. Future Improvements
+
+## Full Tenant Isolation
+
+Every authorization query should include:
+
+```
+tenantId
+
+↓
+
+Permission Check
+
+↓
+
+Database Filter
+```
+
+---
+
+## Expanded Audit Coverage
+
+Every authorization-sensitive action should generate an audit event.
+
+Examples
+
+- Assign Role
+- Remove Role
+- Create Permission
+- Delete Permission
+- Revoke API Key
+
+---
+
+## Attribute-Based Access Control
+
+Future permissions may depend on:
+
+- Department
+- Resource Owner
+- Project
+- Organization
+- Environment
+- Time
+
+instead of only roles.
+
+---
+
+## Policy Engine
+
+Example
+
+```
+Managers
+
+↓
+
+Can Edit
+
+↓
+
+Only Their Department
+```
+
+This is more expressive than RBAC alone.
+
+---
+
+## Permission Caching
+
+Future versions may cache evaluated permissions using Redis.
+
+```
+User
+
+↓
+
+Permission Evaluation
+
+↓
+
+Redis Cache
+
+↓
+
+Application
+```
+
+This reduces repeated database lookups for high-traffic systems.
+
+---
+
+# Authorization Summary
+
+The current authorization architecture provides a complete Role-Based Access Control (RBAC) system built around roles, permissions, centralized permission evaluation, route protection, and API Key authentication.
+
+Authorization decisions are made before business logic executes, ensuring consistent enforcement across the platform.
+
+The remaining work focuses on enterprise authorization capabilities such as full tenant isolation, expanded audit coverage, Attribute-Based Access Control (ABAC), policy evaluation, and distributed permission caching.

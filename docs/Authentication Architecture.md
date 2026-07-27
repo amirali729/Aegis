@@ -1,147 +1,155 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the current implementation (Authentication fully implemented using JWT access tokens, opaque rotating refresh tokens, sessions, email verification and password recovery)
 >
-> Document: 06 - Authentication Architecture
+> Document: 07 - Authentication Architecture
 
 ---
 
 # Table of Contents
 
-1. Introduction
+1. Authentication Overview
 2. Authentication Goals
-3. Authentication Components
-4. Authentication Flow
-5. Signup Architecture
-6. Login Architecture
-7. JWT Architecture
-8. Refresh Token Architecture
-9. Session Architecture
-10. Password Management
-11. Logout
-12. Logout All
-13. Email Verification
-14. Forgot Password
-15. Reset Password
-16. Security Rules
-17. Future Authentication Features
-18. Complete Authentication Sequence
+3. Authentication Flow
+4. Authentication Components
+5. Authentication Lifecycle
+6. JWT Authentication
+7. Session Management
+8. Refresh Token Rotation
+9. Cookie Authentication
+10. Email Verification
+11. Password Recovery
+12. Authentication Security
+13. Current Status
+14. Future Improvements
 
 ---
 
-# 1. Introduction
+# 1. Authentication Overview
 
-Authentication is responsible for answering one question:
+Authentication is responsible for proving a user's identity before they are allowed to access protected resources.
 
-> **Who is this user?**
+The Authentication module answers one question:
 
-It is not responsible for deciding what the user can do.
+> **Who is the user?**
 
-That responsibility belongs to Authorization.
+It is intentionally separated from Authorization.
 
-Authentication includes:
+Authentication determines identity.
 
-- Signup
+Authorization determines permissions.
+
+---
+
+# Authentication Responsibilities
+
+The module currently owns:
+
+- User Registration
 - Login
 - Logout
 - Logout All Devices
-- JWT
-- Refresh Tokens
-- Password Hashing
-- Sessions
+- JWT Access Tokens
+- Session Management
+- Refresh Token Rotation
+- Password Change
+- Forgot Password
+- Reset Password
 - Email Verification
-- Password Reset
+- Resend Verification Email
+
+Future authentication features include:
+
+- Multi-Factor Authentication (MFA)
+- Magic Links
+- Passwordless Login
+- OAuth Providers
+- Passkeys (WebAuthn)
 
 ---
 
 # 2. Authentication Goals
 
-The authentication system should provide:
+The authentication system was designed around several goals.
 
-✓ Secure password storage
+## Stateless API Requests
 
-✓ Stateless access tokens
+Every authenticated API request should be verified using an access token.
 
-✓ Refresh token rotation
-
-✓ Multi-device support
-
-✓ Session management
-
-✓ Logout from one device
-
-✓ Logout from every device
-
-✓ Email verification
-
-✓ Password recovery
-
-✓ Strong typing
-
-✓ Framework independence
+The server should not maintain server-side login state for every request.
 
 ---
 
-# 3. Authentication Components
+## Secure Session Management
+
+Long-lived authentication should never rely on long-lived JWTs.
+
+Instead:
 
 ```
-Client
+Short-lived Access Token
 
-↓
++
 
-Router
-
-↓
-
-Middleware
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Storage
-
-↓
-
-Database
+Long-lived Refresh Session
 ```
 
-Authentication also depends on:
-
-```
-Token Service
-
-↓
-
-Password Service
-
-↓
-
-Cookie Configuration
-
-↓
-
-Email Service
-
-↓
-
-Session Service
-```
+This allows compromised access tokens to expire quickly.
 
 ---
 
-# 4. Authentication Flow
+## Device Awareness
+
+Every login creates an independent session.
+
+A user can be logged in from:
+
+- Laptop
+- Mobile Phone
+- Tablet
+- Desktop
+- Multiple Browsers
+
+Each device is managed independently.
+
+---
+
+## Session Revocation
+
+A user should be able to revoke:
+
+- Current session
+- Specific device
+- Every active device
+
+without affecting unrelated sessions.
+
+---
+
+## Secure Password Recovery
+
+Passwords are never recoverable.
+
+Instead, users receive a one-time reset token via email.
+
+---
+
+# 3. Authentication Flow
+
+The complete authentication flow is shown below.
 
 ```
+User
+
+↓
+
 Signup
+
+↓
+
+Email Verification
 
 ↓
 
@@ -149,11 +157,11 @@ Login
 
 ↓
 
-Receive Cookies
+Access Token + Refresh Session
 
 ↓
 
-Access Protected APIs
+Protected API Requests
 
 ↓
 
@@ -161,23 +169,69 @@ Access Token Expires
 
 ↓
 
-Refresh Token
+Refresh Session
 
 ↓
 
-Continue
+New Access Token
+
+↓
+
+Continue Using API
 
 ↓
 
 Logout
+
+↓
+
+Session Revoked
 ```
+
+Every stage is independent.
 
 ---
 
-# 5. Signup Architecture
+# 4. Authentication Components
+
+The authentication module consists of several components.
 
 ```
-POST /signup
+Authentication
+
+├── User Registration
+
+├── Login
+
+├── JWT Access Tokens
+
+├── Sessions
+
+├── Refresh Tokens
+
+├── Password Recovery
+
+├── Email Verification
+
+└── Logout
+```
+
+Supporting modules include:
+
+- Session Module
+- Email Module
+- Audit Module
+- Role Module
+- Permission Module
+
+---
+
+# 5. Authentication Lifecycle
+
+## User Registration
+
+```
+POST /auth/signup
 ```
 
 Flow
@@ -187,23 +241,19 @@ Client
 
 ↓
 
+Validation (Zod)
+
+↓
+
 Controller
 
 ↓
 
-SignUpDto
+Auth Service
 
 ↓
 
-Repository
-
-↓
-
-Check Username
-
-↓
-
-Check Email
+Duplicate User Check
 
 ↓
 
@@ -215,42 +265,55 @@ Create User
 
 ↓
 
-Return SignUpResponse
+Generate Email Verification Token
+
+↓
+
+Store Hashed Verification Token
+
+↓
+
+Send Verification Email
+
+↓
+
+Audit Log
+
+↓
+
+Response
 ```
 
-Repository responsibilities
+Passwords are hashed before storage.
 
-- Verify uniqueness
-- Create user
-- Store password hash
-- Return response
+Verification tokens are hashed before storage.
 
-Controller responsibilities
-
-- Create DTO
-- Call repository
-- Return Result
+Raw tokens are never persisted.
 
 ---
 
-# 6. Login Architecture
+## Login
 
 ```
-POST /login
+POST /auth/login
 ```
 
 Flow
 
 ```
-Controller
+Client
 
 ↓
 
-LoginDto
+Validation
 
 ↓
 
-Repository
+Auth Controller
+
+↓
+
+Auth Service
 
 ↓
 
@@ -258,74 +321,15 @@ Find User
 
 ↓
 
-Compare Password
+Verify Password
 
 ↓
 
-Generate Token Pair
+Create Session
 
 ↓
 
-Store Refresh Token
-
-↓
-
-Return LoginResponse
-
-↓
-
-Controller
-
-↓
-
-Set Cookies
-```
-
-Cookies
-
-```
-accessToken
-
-refreshToken
-```
-
----
-
-# 7. JWT Architecture
-
-Access Token contains only information needed for authorization.
-
-Example payload
-
-```
-{
-    _id,
-    role,
-    tokenVersion,
-    iat,
-    exp
-}
-```
-
-Avoid storing
-
-- Password
-- Email
-- Username
-- Address
-
-JWT should remain small.
-
----
-
-# 8. Refresh Token Architecture
-
-Refresh Token exists only to generate a new access token.
-
-Flow
-
-```
-Login
+Generate JWT Access Token
 
 ↓
 
@@ -333,11 +337,219 @@ Generate Refresh Token
 
 ↓
 
-Save Database
+Hash Refresh Token
 
 ↓
 
-Cookie
+Store Session
+
+↓
+
+Set Cookies
+
+↓
+
+Audit Log
+
+↓
+
+Response
+```
+
+Every successful login creates a completely new session.
+
+---
+
+## Authenticated Requests
+
+```
+Browser
+
+↓
+
+Access Token Cookie
+
+↓
+
+verifyJwt Middleware
+
+↓
+
+Request.user
+
+↓
+
+Permission Middleware (optional)
+
+↓
+
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository
+
+↓
+
+Database
+```
+
+Every protected request passes through JWT verification before reaching business logic.
+
+---
+
+# 6. JWT Authentication
+
+The platform uses JWTs only for short-lived authentication.
+
+Current implementation:
+
+```
+Access Token
+
+↓
+
+JWT
+
+↓
+
+Signed
+
+↓
+
+Short Expiration
+
+↓
+
+Stored in HTTP Only Cookie
+```
+
+JWTs contain only identity information.
+
+Typical claims include:
+
+- User ID
+- Username
+- Email
+- Session ID
+- Token Version (if required)
+- Expiration
+
+Access tokens are never stored in the database.
+
+---
+
+## Why Short-Lived JWTs?
+
+If an attacker steals an access token:
+
+```
+Attack Window
+
+↓
+
+Very Small
+
+↓
+
+Token Expires
+
+↓
+
+Access Lost
+```
+
+Long-lived JWTs would significantly increase risk.
+
+---
+
+# 7. Session Management
+
+Unlike access tokens, sessions are persistent.
+
+Each login creates:
+
+```
+User
+
+↓
+
+Session
+
+↓
+
+Refresh Token
+
+↓
+
+Device Information
+
+↓
+
+IP Address
+
+↓
+
+User Agent
+
+↓
+
+Expiry
+```
+
+Each session is stored independently.
+
+This allows:
+
+- Multi-device login
+- Device management
+- Session revocation
+- Logout All Devices
+
+The old approach of storing a single refresh token on the User model has been replaced.
+
+---
+
+## Session Model
+
+Every session stores:
+
+```
+User
+
+Hashed Refresh Token
+
+Device Name
+
+User Agent
+
+IP Address
+
+Created At
+
+Last Used At
+
+Expires At
+
+Revoked At
+```
+
+The raw refresh token is never stored.
+
+---
+
+# 8. Refresh Token Rotation
+
+The platform implements rotating refresh tokens.
+
+Flow
+
+```
+Access Token Expired
 
 ↓
 
@@ -345,244 +557,95 @@ Refresh Endpoint
 
 ↓
 
-Verify
+Locate Session
 
 ↓
 
-Generate New Pair
+Compare Hashed Refresh Token
 
 ↓
 
-Replace Old Refresh Token
+Generate New Refresh Token
+
+↓
+
+Hash New Token
+
+↓
+
+Replace Old Token
+
+↓
+
+Generate New JWT
+
+↓
+
+Return Updated Cookies
 ```
 
-This is called **Refresh Token Rotation**.
+The previous refresh token immediately becomes invalid.
 
 ---
 
-# 9. Session Architecture
+## Benefits
 
-Every login creates a session.
+Rotation prevents replay attacks.
 
-Example
+If a stolen refresh token is reused:
 
 ```
-Phone
+Already Replaced
 
 ↓
 
-Session A
-```
-
-```
-Laptop
+Verification Fails
 
 ↓
 
-Session B
+Session Invalid
 ```
 
-```
-Tablet
-
-↓
-
-Session C
-```
-
-Each session owns
-
-- Refresh Token
-- Device
-- Login Time
-- Last Activity
-- IP Address (future)
-- User Agent (future)
-
-Future implementation
-
-```
-sessions
-
-id
-
-userId
-
-refreshTokenHash
-
-device
-
-lastUsed
-
-createdAt
-```
-
-Instead of storing one refresh token on the user document.
+This greatly reduces the usefulness of stolen refresh tokens.
 
 ---
 
-# 10. Password Management
+# 9. Cookie Authentication
 
-Passwords are never stored.
-
-Only hashes.
+Authentication cookies are configured as:
 
 ```
-Password
+HTTP Only
 
-↓
+Secure (production)
 
-bcrypt
+SameSite
 
-↓
-
-Hash
-
-↓
-
-Database
+Signed by HTTPS
 ```
 
-Verification
+Benefits
+
+- JavaScript cannot read cookies.
+- Reduces XSS token theft.
+- Works naturally with browsers.
+- Automatic cookie transmission.
+
+Current cookie configuration is centralized in:
 
 ```
-Entered Password
-
-↓
-
-bcrypt.compare()
-
-↓
-
-true / false
+src/shared/config/cookie.ts
 ```
 
 ---
 
-# 11. Change Password
+# 10. Email Verification
+
+New users must verify ownership of their email.
 
 Flow
 
 ```
-verifyJwt
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Find User
-
-↓
-
-Compare Old Password
-
-↓
-
-Hash New Password
-
-↓
-
-Save User
-
-↓
-
-Success
-```
-
-Future improvement
-
-Changing password should revoke every active session.
-
-```
-password change
-
-↓
-
-tokenVersion++
-
-↓
-
-All tokens invalid
-```
-
----
-
-# 12. Logout
-
-Logout removes only the current session.
-
-Flow
-
-```
-Controller
-
-↓
-
-Repository
-
-↓
-
-Delete Refresh Token
-
-↓
-
-Clear Cookies
-
-↓
-
-Success
-```
-
-Current implementation
-
-```
-user.refreshToken = undefined
-```
-
-Future
-
-Delete session row.
-
----
-
-# 13. Logout All
-
-Flow
-
-```
-Controller
-
-↓
-
-Repository
-
-↓
-
-tokenVersion++
-
-↓
-
-Delete Sessions
-
-↓
-
-Clear Cookies
-```
-
-Every access token immediately becomes invalid.
-
----
-
-# 14. Email Verification
-
-Future
-
 Signup
 
 ↓
@@ -591,11 +654,15 @@ Generate Verification Token
 
 ↓
 
+Hash Token
+
+↓
+
 Store Hash
 
 ↓
 
-Email Service
+Send Email
 
 ↓
 
@@ -607,27 +674,35 @@ Verify Token
 
 ↓
 
-User.isVerified = true
-
----
-
-Verification token should expire.
-
-Example
-
-24 hours.
-
----
-
-# 15. Forgot Password
-
-Flow
-
-```
-User
+Mark Email Verified
 
 ↓
 
+Delete Verification Token
+```
+
+Verification tokens are:
+
+- Random
+- Single-use
+- Expiring
+- Stored only as hashes
+
+---
+
+## Resend Verification
+
+Users may request another verification email.
+
+The previous token becomes invalid once replaced.
+
+---
+
+# 11. Password Recovery
+
+Forgot password flow:
+
+```
 Forgot Password
 
 ↓
@@ -640,35 +715,19 @@ Hash Token
 
 ↓
 
-Save
+Store Hash
 
 ↓
 
-Email
+Send Email
 
 ↓
 
-Reset Link
-```
-
-Never store reset token in plain text.
-
-Store only its hash.
-
----
-
-# 16. Reset Password
-
-```
-Reset Link
+User Opens Link
 
 ↓
 
-Verify Token
-
-↓
-
-Find User
+Reset Password
 
 ↓
 
@@ -676,344 +735,240 @@ Hash New Password
 
 ↓
 
-Save
+Delete Reset Token
 
 ↓
 
-tokenVersion++
-
-↓
-
-Success
+Invalidate Existing Sessions (recommended)
 ```
 
-Incrementing tokenVersion forces every existing session to logout.
+Current implementation supports:
+
+- Forgot Password
+- Reset Password
+
+Future improvements may revoke every active session after a successful password reset.
 
 ---
 
-# 17. Cookie Strategy
+# 12. Authentication Security
 
-Access Token
+Current security measures include:
 
-```
-httpOnly
+## Password Hashing
 
-secure
-
-sameSite
-
-short expiry
-```
-
-Refresh Token
+Passwords are hashed using:
 
 ```
-httpOnly
-
-secure
-
-sameSite
-
-long expiry
+bcrypt
 ```
 
-JavaScript should never access these cookies.
+Passwords are never stored in plaintext.
 
 ---
 
-# 18. Security Rules
+## Refresh Token Hashing
 
-Passwords
+Refresh tokens are hashed using SHA-256 before persistence.
 
-✓ Hashed
-
-JWT
-
-✓ Signed
-
-Refresh Tokens
-
-✓ Rotated
-
-Cookies
-
-✓ HTTP Only
-
-Sessions
-
-✓ Revocable
-
-Password Reset
-
-✓ Time Limited
-
-Email Verification
-
-✓ Time Limited
+The raw refresh token is shown only once to the client.
 
 ---
 
-# 19. Token Version
+## Request Validation
 
-Every JWT contains
+Every authentication endpoint uses Zod validation.
+
+Invalid requests never reach business logic.
+
+---
+
+## Rate Limiting
+
+Authentication routes use stricter limits than normal endpoints.
+
+Current implementation:
+
+- Global Rate Limiter
+- Authentication Rate Limiter
+- Sensitive Action Rate Limiter
+
+The current implementation uses an in-memory store.
+
+---
+
+## Secure Cookies
+
+Authentication cookies use:
+
+- HTTP Only
+- SameSite
+- Secure (production)
+
+---
+
+## Centralized Error Handling
+
+Authentication errors are returned through:
 
 ```
-tokenVersion
+BaseErrorResponse
 ```
 
-Every request compares
+No internal stack traces are exposed in production.
 
-```
-JWT Version
+---
 
-==
+## Audit Logging
 
-Database Version
-```
+Authentication events currently recorded include:
 
-Mismatch
-
-↓
-
-Unauthorized
-
-This allows
-
-- Logout All
+- Signup
+- Successful Login
+- Failed Login
+- Password Change
 - Password Reset
-- Account Compromise Recovery
+- Logout All
 
-without tracking every access token.
-
----
-
-# 20. Future Authentication Features
-
-OAuth
-
-```
-Google
-
-GitHub
-
-Discord
-
-Microsoft
-
-Apple
-```
-
-Magic Links
-
-Passwordless Login
-
-WebAuthn
-
-Passkeys
-
-MFA
-
-Backup Codes
-
-Trusted Devices
-
-Device Approval
+Audit logging is intentionally best-effort and never blocks authentication.
 
 ---
 
-# 21. Authentication Sequence
+# 13. Current Status
+
+## Implemented
+
+✅ Signup
+
+✅ Login
+
+✅ Logout
+
+✅ Logout All
+
+✅ JWT Authentication
+
+✅ Session Management
+
+✅ Multi-device Sessions
+
+✅ Refresh Token Rotation
+
+✅ Password Change
+
+✅ Forgot Password
+
+✅ Reset Password
+
+✅ Email Verification
+
+✅ Resend Verification
+
+✅ Cookie Authentication
+
+✅ Zod Validation
+
+✅ Audit Logging
+
+✅ Rate Limiting
+
+✅ SDK Authentication Support
+
+---
+
+## Partially Implemented
+
+- Login events are audited, but authentication-related audit coverage can still expand.
+- Account lockout after repeated failures is not implemented.
+- Session anomaly detection is not implemented.
+
+---
+
+## Not Implemented
+
+- OAuth Login
+- Google Login
+- GitHub Login
+- Microsoft Login
+- Magic Links
+- Passwordless Login
+- Multi-Factor Authentication (MFA)
+- Passkeys (WebAuthn)
+
+---
+
+# 14. Future Improvements
+
+Planned improvements include:
+
+## Account-Level Brute Force Protection
+
+Instead of relying only on IP-based rate limiting:
 
 ```
-Client
+User Account
 
 ↓
 
-POST /login
+Failed Attempts
 
 ↓
 
-Controller
+Temporary Lock
 
 ↓
 
-Repository
-
-↓
-
-Database
-
-↓
-
-Password Verify
-
-↓
-
-Generate Access Token
-
-↓
-
-Generate Refresh Token
-
-↓
-
-Save Refresh Token
-
-↓
-
-Return LoginResponse
-
-↓
-
-Controller
-
-↓
-
-Set Cookies
-
-↓
-
-BaseResponse
-
-↓
-
-Client
+Automatic Unlock
 ```
 
 ---
 
-Refresh Flow
+## Multi-Factor Authentication
 
-```
-Client
+Support:
 
-↓
-
-Cookie
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Verify Refresh Token
-
-↓
-
-Check Database
-
-↓
-
-Check tokenVersion
-
-↓
-
-Generate New Pair
-
-↓
-
-Update Database
-
-↓
-
-Set New Cookies
-
-↓
-
-Response
-```
+- TOTP
+- Authenticator Apps
+- Backup Codes
 
 ---
 
-Logout Flow
+## Magic Links
 
-```
-Client
-
-↓
-
-verifyJwt
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Delete Session
-
-↓
-
-Clear Cookies
-
-↓
-
-Response
-```
+Passwordless authentication through secure email links.
 
 ---
 
-# Authentication Module Responsibilities
+## OAuth Providers
 
-The Authentication module owns:
+Support for:
 
-✓ Signup
-
-✓ Login
-
-✓ Logout
-
-✓ Logout All
-
-✓ JWT
-
-✓ Refresh Tokens
-
-✓ Password Hashing
-
-✓ Password Change
-
-✓ Password Reset
-
-✓ Email Verification
-
-✓ Session Creation
-
-It does **not** own:
-
-✗ Roles
-
-✗ Permissions
-
-✗ Organizations
-
-✗ API Keys
-
-✗ OAuth Clients
-
-These belong to separate modules.
+- Google
+- GitHub
+- Microsoft
+- Apple
+- Discord
 
 ---
 
-# Summary
+## Passkeys
 
-The Authentication module is responsible for securely proving user identity and managing login sessions.
+Future WebAuthn support for passwordless authentication.
 
-It uses:
+---
 
-- JWT Access Tokens
-- Refresh Token Rotation
-- HTTP Only Cookies
-- Session Management
-- Password Hashing
-- Token Versioning
+# Authentication Summary
 
-Future enhancements such as OAuth, Passkeys, MFA, and Passwordless Login can be added without changing the core authentication architecture because they all eventually produce the same authenticated identity.
+The authentication architecture currently provides a production-oriented authentication system based on:
+
+- JWT access tokens
+- Opaque rotating refresh tokens
+- Session-based device management
+- HTTP-only cookie authentication
+- Email verification
+- Password recovery
+- Request validation
+- Rate limiting
+- Audit logging
+
+The remaining work is focused on authentication hardening and convenience features such as MFA, account lockout, OAuth providers, Magic Links, and Passkeys rather than changes to the core authentication design.

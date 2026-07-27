@@ -1,8 +1,8 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the current implementation (TypeScript SDK Core completed. Framework-specific SDKs are planned.)
 >
 > Document: 09 - SDK Architecture & Client Integration
 
@@ -10,179 +10,163 @@
 
 # Table of Contents
 
-1. Introduction
-2. SDK Goals
-3. Supported Platforms
-4. SDK Packages
-5. SDK Architecture
-6. Configuration
-7. Authentication Flow
-8. Session Management
-9. Route Protection
-10. Backend Integration
-11. React Integration
-12. Next.js Integration
-13. Express Integration
-14. Error Handling
-15. Future SDK Features
+1. SDK Overview
+2. Design Goals
+3. SDK Architecture
+4. SDK Core
+5. Authentication Flow
+6. Session Management
+7. HTTP Client
+8. Event System
+9. Framework Integrations
+10. Smoke Testing
+11. Current Status
+12. Future Improvements
 
 ---
 
-# 1. Introduction
+# 1. SDK Overview
 
-The SDK is the primary interface between developers and the Identity Platform.
+The Aegis SDK allows applications to communicate with the Identity Platform without manually constructing HTTP requests.
 
-Developers should **never** need to manually:
+Instead of interacting directly with REST endpoints, applications use a strongly typed TypeScript client.
 
-- Build login URLs
-- Handle cookies
-- Refresh access tokens
-- Parse JWTs
-- Retry authentication requests
-- Store tokens
+Example
 
-The SDK performs all of these automatically.
+```
+Application
+
+↓
+
+Aegis SDK
+
+↓
+
+REST API
+
+↓
+
+Identity Platform
+```
+
+The SDK is framework-agnostic and works in:
+
+- Node.js
+- React
+- Next.js
+- Vue
+- Angular
+- CLI Applications
+
+The SDK never communicates directly with the database.
+
+It only interacts with the public REST API.
 
 ---
 
-# 2. SDK Goals
+# Responsibilities
 
-The SDK should provide:
+The SDK currently provides:
 
-✓ Easy installation
+- Authentication
+- Session Management
+- Automatic Token Refresh
+- Token Storage
+- HTTP Client
+- Event System
+- Retry After Refresh
+- Typed API Methods
 
-✓ Simple configuration
-
-✓ Automatic authentication
-
-✓ Automatic token refresh
-
-✓ Session management
-
-✓ Route protection
-
-✓ User information
-
-✓ Logout
-
-✓ Error handling
-
-✓ TypeScript support
-
-✓ Tree-shakable packages
+Future SDKs will build on top of the SDK Core.
 
 ---
 
-# 3. Supported Platforms
+# 2. Design Goals
 
-The platform will eventually provide separate SDKs.
+The SDK was designed around several principles.
 
-```
-@identity/core
-```
+---
 
-Shared logic.
+## Framework Agnostic
 
-```
-@identity/react
-```
-
-React Hooks
+The SDK should work anywhere JavaScript or TypeScript runs.
 
 ```
-@identity/next
-```
+Browser
+
+↓
+
+Node
+
+↓
+
+React
+
+↓
 
 Next.js
 
-```
-@identity/node
-```
+↓
 
-Express
-
-```
-@identity/nest
+CLI
 ```
 
-NestJS
+The SDK Core contains no framework-specific code.
+
+---
+
+## Minimal Configuration
+
+Getting started should require only a few lines.
 
 ```
-@identity/vue
-```
+Create Client
 
-Vue
+↓
 
-```
-@identity/angular
-```
+Configure Base URL
 
-Angular
+↓
 
-Future
+Login
 
-```
-Flutter
+↓
 
-React Native
-
-Swift
-
-Kotlin
-
-Go
-
-Python
+Use API
 ```
 
 ---
 
-# 4. SDK Package Structure
+## Automatic Authentication
 
-```
-packages/
+Applications should never manually refresh access tokens.
 
-    core/
-
-    react/
-
-    next/
-
-    node/
-
-    nest/
-
-    vue/
-
-    angular/
-```
-
-Each package depends on
-
-```
-core
-```
-
-Business logic lives only inside Core.
+The SDK manages authentication automatically.
 
 ---
 
-# 5. SDK Architecture
+## Strong Typing
+
+Every request and response should be fully typed.
+
+This provides:
+
+- Better IntelliSense
+- Compile-time safety
+- Easier development
+
+---
+
+# 3. SDK Architecture
+
+Current architecture
 
 ```
-Developer
+Application
 
 ↓
 
-React App
-
-↓
-
-React SDK
-
-↓
-
-Core SDK
+SDK Core
 
 ↓
 
@@ -190,153 +174,136 @@ HTTP Client
 
 ↓
 
+REST API
+
+↓
+
 Identity Platform
 ```
 
-The frontend never communicates directly with authentication endpoints.
-
-Everything passes through the SDK.
+The SDK Core contains reusable infrastructure used by every future SDK.
 
 ---
 
-# 6. SDK Configuration
+## Planned Architecture
 
-Example
-
-```ts
-Identity.configure({
-  baseUrl: 'https://auth.example.com',
-
-  clientId: 'abc123',
-});
 ```
-
-Future options
-
-```ts
-Identity.configure({
-  baseUrl,
-
-  clientId,
-
-  clientSecret,
-
-  tenant,
-
-  timeout,
-
-  retry,
-
-  cookie,
-
-  storage,
-});
-```
-
----
-
-# 7. Login Flow
-
-Developer
-
-```ts
-await auth.login({
-  email,
-
-  password,
-});
-```
-
 SDK
 
-↓
+├── Core
 
-POST /login
+├── React
 
-↓
+├── Next.js
 
-Stores Session
+├── Node
 
-↓
+├── NestJS
 
-Loads Current User
+├── Vue
 
-↓
+└── Angular
+```
 
-Returns User
-
-Developer never touches cookies.
+Every higher-level SDK depends on the Core package.
 
 ---
 
-# 8. Signup Flow
+# 4. SDK Core
 
-Developer
+The SDK Core is fully implemented.
 
-```ts
-await auth.signup({
-  email,
+Responsibilities include:
 
-  password,
+```
+Authentication
 
-  username,
-});
+↓
+
+Token Storage
+
+↓
+
+HTTP Client
+
+↓
+
+Session Management
+
+↓
+
+Automatic Refresh
+
+↓
+
+Events
 ```
 
-SDK
-
-↓
-
-POST /signup
-
-↓
-
-Success
-
-↓
-
-Return User
+The Core package is framework independent.
 
 ---
 
-# 9. Logout Flow
+## Authentication Module
 
-Developer
+Provides methods such as:
 
-```ts
-await auth.logout();
-```
+- Login
+- Signup
+- Logout
+- Logout All
+- Refresh Session
+- Password Recovery
+- Email Verification
 
-SDK
-
-↓
-
-POST /logout
-
-↓
-
-Clear Cache
-
-↓
-
-Clear User
-
-↓
-
-Redirect Login
+Authentication mirrors the backend API.
 
 ---
 
-# 10. Automatic Refresh
+## Typed Modules
 
-SDK watches every request.
+The SDK exposes typed clients for backend modules including:
+
+- Authentication
+- Sessions
+- Roles
+- Permissions
+- Applications
+- API Keys
+- Audit
+- Tenants
+
+Each module corresponds to a backend module.
+
+---
+
+# 5. Authentication Flow
+
+The SDK automatically manages authentication.
+
+Flow
 
 ```
-401
+Login
 
 ↓
 
-Refresh Token
+Receive Cookies / Tokens
+
+↓
+
+Store Authentication
+
+↓
+
+Authenticated Requests
+
+↓
+
+401 Received
+
+↓
+
+Refresh Session
 
 ↓
 
@@ -344,335 +311,123 @@ Retry Original Request
 
 ↓
 
-Success
+Continue
 ```
 
-Developer never manually refreshes tokens.
+Applications never need to manually retry failed requests after token expiration.
 
 ---
 
-# 11. User Cache
+## Automatic Token Refresh
 
-SDK stores
+When an access token expires:
 
 ```
-Current User
-```
-
-Memory
+API Request
 
 ↓
 
-React Context
+401 Unauthorized
 
 ↓
 
-Components
-
-Example
-
-```ts
-const user = auth.user();
-```
-
-No HTTP request required.
-
----
-
-# 12. React Integration
-
-Provider
-
-```tsx
-<AuthProvider>
-  <App />
-</AuthProvider>
-```
-
-Hooks
-
-```ts
-const auth = useAuth();
-```
-
-Methods
-
-```ts
-auth.login();
-
-auth.logout();
-
-auth.signup();
-
-auth.user();
-
-auth.refresh();
-
-auth.isAuthenticated();
-```
-
----
-
-# 13. Route Protection
-
-Example
-
-```tsx
-<ProtectedRoute>Dashboard</ProtectedRoute>
-```
-
-SDK
+Refresh Endpoint
 
 ↓
 
-Check Session
+New Access Token
 
 ↓
 
-Allowed
-
-or
-
-Redirect Login
-
----
-
-# 14. Permission Hooks
-
-Future
-
-```ts
-const canEdit = auth.can('user:update');
-```
-
-Another
-
-```ts
-auth.hasRole('Admin');
-```
-
-Another
-
-```ts
-auth.hasPermission('user:delete');
-```
-
----
-
-# 15. Next.js
-
-Server Components
-
-Middleware
-
-Route Handlers
-
-API Routes
-
-Supported.
-
-Example
-
-```ts
-const session = await auth.getServerSession();
-```
-
----
-
-# 16. Express SDK
-
-Example
-
-```ts
-app.use(identityMiddleware());
-```
-
-Request becomes
-
-```ts
-req.user;
-```
-
-Protected Route
-
-```ts
-app.get(
-  '/profile',
-
-  requirePermission('user:view'),
-
-  controller,
-);
-```
-
----
-
-# 17. Error Handling
-
-Instead of
-
-```
-Axios Error
-```
-
-Developer receives
-
-```ts
-AuthenticationError;
-
-AuthorizationError;
-
-ValidationError;
-
-NetworkError;
-
-ServerError;
-```
-
-Typed errors.
-
----
-
-# 18. Retry Strategy
-
-Temporary network failure
+Retry Original Request
 
 ↓
 
-Retry
+Return Response
+```
 
-↓
-
-Exponential Backoff
-
-↓
-
-Success
-
-Developer doesn't write retry logic.
+The retry process is automatic.
 
 ---
 
-# 19. SDK Storage
+## Concurrent Refresh Protection
 
-Web
+If multiple requests receive:
+
+```
+401
+```
+
+simultaneously:
+
+```
+Request A
 
 ↓
 
-Cookies
-
-Mobile
+Refresh
 
 ↓
 
-Secure Storage
-
-Node
+New Token
 
 ↓
 
-Memory
+Waiting Requests Reuse Same Refresh
 
-Custom storage adapters can be added later.
+↓
+
+Continue
+```
+
+Only one refresh request is sent.
+
+Other requests wait for the result.
+
+This prevents refresh storms.
 
 ---
 
-# 20. Event System
+# 6. Session Management
 
-Future
+The SDK understands user sessions.
 
-Developers can subscribe to events.
+Capabilities include:
 
-```ts
-auth.on(
-  'login',
+- List Sessions
+- Current Session
+- Logout Current Session
+- Logout All Sessions
 
-  callback,
-);
-```
-
-Other events
-
-```
-logout
-
-refresh
-
-expired
-
-sessionChanged
-
-userUpdated
-```
+Session information is synchronized with the backend API.
 
 ---
 
-# 21. Plugins
+## Token Storage
 
-Future
+The SDK stores authentication state through a dedicated storage layer.
 
-SDK plugins
+Responsibilities include:
 
-```
-Analytics
+- Read Tokens
+- Save Tokens
+- Remove Tokens
+- Update Tokens
 
-Logging
-
-Monitoring
-
-OpenTelemetry
-
-Sentry
-
-Custom Cache
-```
+The storage implementation is abstracted, allowing different environments to provide their own persistence mechanism.
 
 ---
 
-# 22. Developer Experience
+# 7. HTTP Client
 
-A developer should be able to authenticate a project with only three steps.
-
-Install
-
-```bash
-npm install @identity/react
-```
-
-Configure
-
-```ts
-Identity.configure({
-  baseUrl,
-
-  clientId,
-});
-```
-
-Wrap App
-
-```tsx
-<AuthProvider>
-  <App />
-</AuthProvider>
-```
-
-Everything else is automatic.
-
----
-
-# 23. Complete SDK Architecture
+Every SDK request passes through the built-in HTTP client.
 
 ```
 Application
 
 ↓
 
-Identity SDK
-
-↓
-
-Authentication Client
+SDK Method
 
 ↓
 
@@ -680,99 +435,356 @@ HTTP Client
 
 ↓
 
-Cookie Manager
+REST API
 
 ↓
 
-Session Manager
-
-↓
-
-Cache Manager
-
-↓
-
-Retry Manager
-
-↓
-
-Identity Platform
-
-↓
-
-Database
+Response
 ```
 
-Every layer has one responsibility.
+Responsibilities include:
+
+- Base URL handling
+- Headers
+- Authentication
+- Error handling
+- Retry after refresh
+
+Applications do not need to manually configure every request.
 
 ---
 
-# 24. Internal SDK Modules
+## Request Pipeline
 
 ```
-core/
+SDK Method
 
-    auth/
+↓
 
-    http/
+Build Request
 
-    cache/
+↓
 
-    cookies/
+Attach Authentication
 
-    refresh/
+↓
 
-    storage/
+HTTP Request
 
-    events/
+↓
 
-    errors/
+Response
 
-    utils/
+↓
 
-    types/
+Typed Object
 ```
 
 ---
 
-# 25. Future SDK Features
+## Error Handling
 
-✓ OAuth Login
+The SDK converts HTTP responses into consistent error objects.
 
-✓ MFA
+Examples include:
 
-✓ Passkeys
+- Validation Errors
+- Authentication Errors
+- Authorization Errors
+- Network Errors
 
-✓ Device Trust
-
-✓ Organizations
-
-✓ Role Management
-
-✓ Permission Management
-
-✓ Session Dashboard
-
-✓ Webhooks
-
-✓ Offline Cache
-
-✓ Push Notifications
+This provides a predictable developer experience.
 
 ---
 
-# Summary
+# 8. Event System
 
-The SDK is responsible for providing a simple, consistent developer experience across every supported platform.
+The SDK exposes an event system for authentication-related changes.
 
-Its responsibilities include:
+Typical events include:
 
-- Authentication requests
-- Session management
-- Automatic token refresh
-- Route protection
-- User caching
-- Error normalization
-- Framework integration
+```
+Login
 
-The SDK hides implementation details so developers interact with a clean, stable API instead of low-level authentication endpoints.
+↓
+
+Logout
+
+↓
+
+Token Refreshed
+
+↓
+
+Authentication Failure
+
+↓
+
+Session Expired
+```
+
+Applications can subscribe to these events to update their UI.
+
+Example use cases:
+
+- Redirect to Login
+- Update User State
+- Display Notifications
+- Clear Cached Data
+
+---
+
+# 9. Framework Integrations
+
+Current implementation:
+
+```
+SDK Core
+
+↓
+
+Complete
+```
+
+Planned integrations:
+
+```
+React SDK
+
+↓
+
+React Hooks
+
+------------------
+
+Next.js SDK
+
+↓
+
+Server Components
+
+↓
+
+Middleware Helpers
+
+------------------
+
+Node SDK
+
+↓
+
+Backend Services
+
+------------------
+
+NestJS SDK
+
+↓
+
+Dependency Injection
+
+------------------
+
+Vue SDK
+
+↓
+
+Composables
+
+------------------
+
+Angular SDK
+
+↓
+
+Services
+```
+
+These packages will wrap the SDK Core rather than duplicate its functionality.
+
+---
+
+# 10. Smoke Testing
+
+The SDK Core has been validated using smoke tests.
+
+Current coverage includes:
+
+✅ Basic Login
+
+✅ Refresh Failure
+
+✅ Automatic Refresh
+
+✅ Token Persistence
+
+✅ Concurrent Refresh
+
+✅ Session Endpoints
+
+✅ Logout
+
+✅ Logout All
+
+---
+
+## Example Output
+
+```text
+Logged in as: jane
+
+Sessions: [...]
+
+Refresh Count: 1
+
+Protected Calls: 2
+
+SMOKE TEST PASSED
+```
+
+These tests verify the complete authentication lifecycle.
+
+---
+
+# 11. Current Status
+
+## Implemented
+
+✅ SDK Core
+
+✅ Authentication
+
+✅ HTTP Client
+
+✅ Automatic Token Refresh
+
+✅ Token Storage
+
+✅ Session Management
+
+✅ Retry After Refresh
+
+✅ Event System
+
+✅ Typed API Modules
+
+✅ Smoke Tests
+
+---
+
+## Partially Implemented
+
+- Framework-specific wrappers are planned but not yet available.
+- Package publishing workflow exists conceptually but public package distribution has not yet begun.
+
+---
+
+## Not Implemented
+
+- React SDK
+
+- Next.js SDK
+
+- Vue SDK
+
+- Angular SDK
+
+- NestJS SDK
+
+- React Native SDK
+
+- Flutter SDK
+
+- Offline Synchronization
+
+- Automatic Request Caching
+
+---
+
+# 12. Future Improvements
+
+## Framework Packages
+
+Future packages include:
+
+```
+@aegis/core
+
+↓
+
+@aegis/react
+
+↓
+
+@aegis/next
+
+↓
+
+@aegis/node
+
+↓
+
+@aegis/nest
+```
+
+All packages will build on the SDK Core.
+
+---
+
+## Request Caching
+
+Future versions may cache selected responses.
+
+```
+Request
+
+↓
+
+Cache
+
+↓
+
+Network
+
+↓
+
+Response
+```
+
+This can improve performance for frequently accessed data.
+
+---
+
+## Offline Support
+
+Potential future capabilities:
+
+- Request Queueing
+- Offline Authentication State
+- Background Synchronization
+
+---
+
+## Additional Integrations
+
+Future integrations may include:
+
+- React Query
+- TanStack Query
+- SWR
+- Axios Adapter
+- Fetch Adapter
+
+---
+
+## Package Distribution
+
+The SDK will eventually be distributed through npm with automated releases generated from the project's release workflow.
+
+---
+
+# SDK Summary
+
+The Aegis SDK is centered around a completed, framework-agnostic TypeScript Core package that provides authentication, session management, automatic token refresh, typed API clients, an event system, and a reusable HTTP client.
+
+Framework-specific SDKs such as React, Next.js, Vue, Angular, and NestJS are planned to build on this Core package, ensuring consistent behavior across every integration while avoiding duplicated implementation.

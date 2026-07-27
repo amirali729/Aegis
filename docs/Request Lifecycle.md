@@ -1,141 +1,40 @@
 # Aegis
 
-> Version: 1.0
+> Version: 1.1
 >
-> Status: Design Phase
+> Status: Reflects the current implementation (Request pipeline, middleware chain, controllers, services, repositories, sessions, API keys, validation, and error handling)
 >
-> Document: 04 - Request Lifecycle
+> Document: 07 - Request Lifecycle
 
 ---
 
 # Table of Contents
 
-1. Introduction
-2. General Request Lifecycle
-3. Authentication Request Flow
-4. Signup Flow
-5. Login Flow
-6. Refresh Token Flow
-7. Change Password Flow
-8. Logout Flow
-9. Logout All Flow
-10. Future Flows
-11. Error Flow
-12. Why This Architecture
+1. Request Lifecycle Overview
+2. Design Goals
+3. High-Level Request Flow
+4. HTTP Request Pipeline
+5. Middleware Pipeline
+6. Controller Layer
+7. Service Layer
+8. Repository Layer
+9. Response Generation
+10. Error Handling
+11. Authentication & Authorization Flow
+12. API Key Request Flow
+13. Current Status
+14. Future Improvements
 
 ---
 
-# 1. Introduction
+# 1. Request Lifecycle Overview
 
-Every request follows the exact same lifecycle.
+Every HTTP request follows the same predictable path through the application.
 
-No endpoint should bypass this flow.
-
-Whether the endpoint is:
-
-- Signup
-- Login
-- Roles
-- Permissions
-- Sessions
-- API Keys
-
-all requests move through the same layers.
-
-This consistency makes the project predictable and maintainable.
-
----
-
-# 2. General Request Lifecycle
-
-```
-                Client
-
-                  │
-
-                  ▼
-
-           Express Router
-
-                  │
-
-                  ▼
-
-             Middleware
-
-                  │
-
-                  ▼
-
-              handle()
-
-                  │
-
-                  ▼
-
-             Controller
-
-                  │
-
-                  ▼
-
-           Repository Layer
-
-                  │
-
-                  ▼
-
-             Database
-
-                  │
-
-                  ▼
-
-           Repository Layer
-
-                  │
-
-                  ▼
-
-             Controller
-
-                  │
-
-                  ▼
-
-              handle()
-
-                  │
-
-                  ▼
-
-          BaseResponse JSON
-
-                  │
-
-                  ▼
-
-               Client
-```
-
-Notice that the controller never sends responses directly.
-
-It simply returns a Result.
-
-The `handle()` utility converts that Result into an HTTP response.
-
----
-
-# 3. Detailed Authentication Flow
-
-Authentication uses this path.
+The request moves through multiple layers, where each layer has a single responsibility.
 
 ```
 Client
-
-↓
-
-POST /login
 
 ↓
 
@@ -143,35 +42,7 @@ Express Router
 
 ↓
 
-handle()
-
-↓
-
-AuthController.login()
-
-↓
-
-LoginDto
-
-↓
-
-AuthRepository.login()
-
-↓
-
-User Model
-
-↓
-
-MongoDB
-
-↓
-
-Token Service
-
-↓
-
-Repository returns Result
+Middleware
 
 ↓
 
@@ -179,429 +50,11 @@ Controller
 
 ↓
 
-Cookies Added
-
-↓
-
-Result returned
-
-↓
-
-handle()
-
-↓
-
-BaseResponse
-
-↓
-
-Client
-```
-
----
-
-# 4. Signup Flow
-
-## Step 1
-
-Client sends
-
-```
-POST /signup
-```
-
-Example
-
-```json
-{
-  "username": "amir",
-  "email": "amir@example.com",
-  "password": "12345678"
-}
-```
-
----
-
-## Step 2
-
-Router
-
-```
-POST /signup
-
-↓
-
-AuthController.signUp()
-```
-
-Router contains no business logic.
-
----
-
-## Step 3
-
-Controller
-
-Controller creates
-
-```
-SignUpDto
-```
-
-Example
-
-```
-new SignUpDto(
-    username,
-    email,
-    password
-)
-```
-
-The controller never validates uniqueness.
-
-The controller never queries MongoDB.
-
----
-
-## Step 4
-
-Repository
-
-Repository performs
-
-```
-Find existing user
-
-↓
-
-Check username
-
-↓
-
-Check email
-
-↓
-
-Hash password
-
-↓
-
-Create user
-
-↓
-
-Return response object
-```
-
----
-
-## Step 5
-
-Repository returns
-
-```
-ok()
-
-or
-
-err()
-```
-
-Never Express Response.
-
-Never JSON.
-
-Never status code.
-
----
-
-## Step 6
-
-Controller returns Result.
-
-```
-return repository.signUp(dto)
-```
-
----
-
-## Step 7
-
-handle()
-
-```
-if ok()
-
-↓
-
-BaseResponse
-
-↓
-
-201 Created
-```
-
-or
-
-```
-err()
-
-↓
-
-mapAuthError()
-
-↓
-
-BaseErrorResponse
-
-↓
-
-409
-```
-
----
-
-# Complete Signup Diagram
-
-```
-Client
-
-↓
-
-Route
-
-↓
-
-Controller
-
-↓
-
-DTO
+Service
 
 ↓
 
 Repository
-
-↓
-
-MongoDB
-
-↓
-
-Repository
-
-↓
-
-Result
-
-↓
-
-Controller
-
-↓
-
-handle()
-
-↓
-
-HTTP Response
-```
-
----
-
-# 5. Login Flow
-
-Request
-
-```
-POST /login
-```
-
----
-
-Controller
-
-Creates
-
-```
-LoginDto
-```
-
-↓
-
-Repository
-
-Find user
-
-↓
-
-Verify password
-
-↓
-
-Generate Tokens
-
-↓
-
-Save Refresh Token
-
-↓
-
-Return LoginResponse
-
-↓
-
-Controller
-
-Sets
-
-```
-accessToken cookie
-
-refreshToken cookie
-```
-
-↓
-
-handle()
-
-↓
-
-Client
-
----
-
-Sequence Diagram
-
-```
-Client
-
-↓
-
-POST /login
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-User.findOne()
-
-↓
-
-Password Compare
-
-↓
-
-Generate Tokens
-
-↓
-
-Save Refresh Token
-
-↓
-
-LoginResponse
-
-↓
-
-Cookie
-
-↓
-
-BaseResponse
-
-↓
-
-Client
-```
-
----
-
-# 6. Refresh Token Flow
-
-Client
-
-```
-POST /refresh
-```
-
-Cookie
-
-```
-refreshToken
-```
-
-↓
-
-Controller
-
-Creates
-
-```
-RefreshTokenDto
-```
-
-↓
-
-Repository
-
-Verify JWT
-
-↓
-
-Find User
-
-↓
-
-Compare Refresh Token
-
-↓
-
-Compare Token Version
-
-↓
-
-Generate New Token Pair
-
-↓
-
-Update Refresh Token
-
-↓
-
-Return RefreshTokenResponse
-
-↓
-
-Controller
-
-Update Cookies
-
-↓
-
-handle()
-
-↓
-
-Client
-
----
-
-Sequence
-
-```
-Cookie
-
-↓
-
-JWT Verify
 
 ↓
 
@@ -609,556 +62,102 @@ Database
 
 ↓
 
-Generate Tokens
-
-↓
-
-Save Tokens
-
-↓
-
 Response
 ```
 
----
+Every layer only communicates with the layer directly below it.
 
-# 7. Change Password Flow
-
-Client
-
-```
-POST /change-password
-```
-
-↓
-
-verifyJwt
-
-↓
-
-Controller
-
-↓
-
-ChangePasswordDto
-
-↓
-
-Repository
-
-↓
-
-Find User
-
-↓
-
-Compare Old Password
-
-↓
-
-Hash New Password
-
-↓
-
-Save User
-
-↓
-
-ChangePasswordResponse
-
-↓
-
-handle()
-
-↓
-
-Client
+No layer skips another.
 
 ---
 
-Diagram
+# 2. Design Goals
 
-```
-JWT
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Password Compare
-
-↓
-
-Save Password
-
-↓
-
-Response
-```
+The request lifecycle was designed around several principles.
 
 ---
 
-# 8. Logout Flow
+## Predictability
 
-Client
+Every request should follow the exact same pipeline.
 
-```
-POST /logout
-```
-
-↓
-
-verifyJwt
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Remove Refresh Token
-
-↓
-
-LogoutResponse
-
-↓
-
-Controller
-
-↓
-
-Clear Cookies
-
-↓
-
-handle()
-
-↓
-
-Client
+Developers should always know where business logic belongs.
 
 ---
-
-Diagram
-
-```
-JWT
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-refreshToken = undefined
-
-↓
-
-Save
-
-↓
-
-Clear Cookies
-
-↓
-
-Success
-```
-
----
-
-# 9. Logout All Flow
-
-Client
-
-```
-POST /logout-all
-```
-
-↓
-
-verifyJwt
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Increment
-
-```
-tokenVersion
-```
-
-↓
-
-Clear refreshToken
-
-↓
-
-Save User
-
-↓
-
-Controller
-
-↓
-
-Clear Cookies
-
-↓
-
-Response
-
----
-
-Why increment tokenVersion?
-
-Suppose
-
-```
-Access Token A
-
-Refresh Token A
-
-Access Token B
-
-Refresh Token B
-```
-
-exist on four devices.
-
-Incrementing
-
-```
-tokenVersion
-```
-
-invalidates every token immediately.
-
-Every future JWT validation checks
-
-```
-decoded.tokenVersion
-
-==
-
-user.tokenVersion
-```
-
-If different
-
-↓
-
-Unauthorized
-
----
-
-# 10. Future Request Flows
-
-The same lifecycle will be used for every future feature.
-
----
-
-Forgot Password
-
-```
-Controller
-
-↓
-
-Repository
-
-↓
-
-Generate Reset Token
-
-↓
-
-Save
-
-↓
-
-Email Service
-
-↓
-
-Response
-```
-
----
-
-Email Verification
-
-```
-Controller
-
-↓
-
-Repository
-
-↓
-
-Generate Token
-
-↓
-
-Database
-
-↓
-
-Email Service
-
-↓
-
-Response
-```
-
----
-
-OAuth Login
-
-```
-Google
-
-↓
-
-Callback
-
-↓
-
-Controller
-
-↓
-
-Repository
-
-↓
-
-Find User
-
-↓
-
-Create User
-
-↓
-
-Generate Tokens
-
-↓
-
-Response
-```
-
----
-
-Create Role
-
-```
-Controller
-
-↓
-
-Repository
-
-↓
-
-Role Collection
-
-↓
-
-Response
-```
-
----
-
-Create Permission
-
-```
-Controller
-
-↓
-
-Repository
-
-↓
-
-Permission Collection
-
-↓
-
-Response
-```
-
----
-
-# 11. Error Lifecycle
-
-Errors always follow one path.
-
-```
-Repository
-
-↓
-
-err()
-
-↓
-
-Controller
-
-↓
-
-handle()
-
-↓
-
-mapAuthError()
-
-↓
-
-BaseErrorResponse
-
-↓
-
-Client
-```
-
-Repository never sends JSON.
-
-Repository never sets status codes.
-
-Repository only returns domain errors.
-
----
-
-Example
-
-Repository
-
-```
-return err(
-    new UserNotFoundError()
-)
-```
-
-↓
-
-handle()
-
-↓
-
-mapAuthError()
-
-↓
-
-```
-404
-```
-
-↓
-
-JSON
-
-```json
-{
-  "success": false,
-  "message": "User not found.",
-  "statusCode": 404
-}
-```
-
----
-
-# 12. Why This Architecture
-
-This request lifecycle provides several advantages.
 
 ## Separation of Responsibilities
 
-Routes
-
-Only define endpoints.
-
-Controllers
-
-Coordinate requests.
-
-Repositories
-
-Contain business logic.
-
-Models
-
-Represent data.
-
-Database
-
-Stores data.
-
----
-
-## Consistency
-
-Every endpoint follows the same structure.
-
-A developer implementing a new feature already knows where every piece of code belongs.
-
----
-
-## Easy Testing
-
-Each layer can be tested independently.
-
-- Controller tests
-- Repository tests
-- Database tests
-- End-to-end tests
-
----
-
-## Database Independence
-
-Business logic never depends directly on MongoDB.
-
-Later implementations for PostgreSQL or MySQL can replace the storage layer without changing controllers.
-
----
-
-## Scalability
-
-As the project grows, new modules (Roles, Permissions, Sessions, Applications, OAuth, Webhooks) can reuse this exact request lifecycle.
-
-No architectural changes are required.
-
----
-
-# Summary
-
-Every request in the Identity Platform follows this lifecycle:
+Each layer performs only one job.
 
 ```
-HTTP Request
+Middleware
+
+↓
+
+Validation
+
+----------------
+
+Controller
+
+↓
+
+Request orchestration
+
+----------------
+
+Service
+
+↓
+
+Business rules
+
+----------------
+
+Repository
+
+↓
+
+Database access
+```
+
+---
+
+## Testability
+
+Every layer can be tested independently.
+
+Repositories can be mocked.
+
+Services can be unit tested.
+
+Controllers can be tested without a database.
+
+---
+
+## Reusability
+
+Business logic should never depend on Express.
+
+This allows future integrations through:
+
+- REST API
+- CLI
+- Background Jobs
+- Queue Workers
+- GraphQL
+- gRPC
+
+---
+
+# 3. High-Level Request Flow
+
+```
+Client
+
+↓
+
+Express Server
 
 ↓
 
@@ -1170,6 +169,68 @@ Middleware
 
 ↓
 
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository
+
+↓
+
+MongoDB
+
+↓
+
+Result
+
+↓
+
+Controller
+
+↓
+
+BaseResponse
+
+↓
+
+HTTP Response
+```
+
+Each step has a clearly defined responsibility.
+
+---
+
+# 4. HTTP Request Pipeline
+
+Example:
+
+```
+POST /api/v1/auth/login
+```
+
+Pipeline:
+
+```
+Incoming Request
+
+↓
+
+Express Router
+
+↓
+
+Rate Limiter
+
+↓
+
+Request Validation
+
+↓
+
 handle()
 
 ↓
@@ -1178,7 +239,7 @@ Controller
 
 ↓
 
-DTO
+Service
 
 ↓
 
@@ -1190,15 +251,359 @@ Database
 
 ↓
 
-Repository
-
-↓
-
 Result
 
 ↓
 
+BaseResponse
+
+↓
+
+Client
+```
+
+The pipeline remains consistent across all modules.
+
+---
+
+# Route Registration
+
+Routes are responsible only for wiring components together.
+
+Example responsibilities:
+
+- Register endpoints
+- Apply middleware
+- Instantiate repository
+- Instantiate service
+- Instantiate controller
+
+Routes never contain business logic.
+
+---
+
+# 5. Middleware Pipeline
+
+Middleware executes before controllers.
+
+Typical pipeline:
+
+```
+Incoming Request
+
+↓
+
+Helmet
+
+↓
+
+CORS
+
+↓
+
+Cookie Parser
+
+↓
+
+JSON Parser
+
+↓
+
+Rate Limiter
+
+↓
+
+Authentication
+
+↓
+
+Authorization
+
+↓
+
+Validation
+
+↓
+
 Controller
+```
+
+Every middleware performs a single task.
+
+---
+
+## Request Validation
+
+All request bodies, query parameters, and route parameters are validated using Zod.
+
+```
+Request
+
+↓
+
+validate()
+
+↓
+
+Valid
+
+↓
+
+Controller
+```
+
+Invalid requests never reach business logic.
+
+Validated values are attached to the request (or `res.locals`) instead of mutating Express's read-only properties.
+
+---
+
+## Authentication
+
+Protected endpoints execute:
+
+```
+verifyJwt
+```
+
+Responsibilities:
+
+- Read access token
+- Verify signature
+- Verify expiration
+- Load authenticated user
+- Attach user to request
+
+Unauthenticated requests receive:
+
+```
+401 Unauthorized
+```
+
+---
+
+## Authorization
+
+Endpoints requiring permissions execute:
+
+```
+requirePermission()
+
+↓
+
+Permission Evaluator
+
+↓
+
+Allow
+
+or
+
+Deny
+```
+
+Denied requests return:
+
+```
+403 Forbidden
+```
+
+---
+
+## API Key Authentication
+
+Server-to-server endpoints may authenticate using:
+
+```
+X-API-Key
+```
+
+Pipeline:
+
+```
+API Key
+
+↓
+
+Hash Incoming Key
+
+↓
+
+Compare Stored Hash
+
+↓
+
+Authenticated Application
+```
+
+---
+
+# 6. Controller Layer
+
+Controllers receive validated requests.
+
+Responsibilities:
+
+- Read DTOs
+- Read authenticated user
+- Call service
+- Set cookies (when required)
+- Return Result
+
+Controllers never:
+
+- Query MongoDB
+- Hash passwords
+- Evaluate permissions
+- Create business rules
+
+---
+
+## Example Flow
+
+```
+Controller
+
+↓
+
+Login DTO
+
+↓
+
+Auth Service
+
+↓
+
+Result<LoginResponse>
+
+↓
+
+Set Cookies
+
+↓
+
+Return Response
+```
+
+Controllers remain intentionally thin.
+
+---
+
+# 7. Service Layer
+
+Services contain every business rule.
+
+Typical responsibilities include:
+
+- Password verification
+- Duplicate detection
+- Session creation
+- JWT generation
+- Refresh token rotation
+- Email verification
+- Password recovery
+- Audit logging
+- Permission orchestration
+
+Services never know about Express.
+
+---
+
+## Example
+
+```
+Login Request
+
+↓
+
+Verify User
+
+↓
+
+Compare Password
+
+↓
+
+Create Session
+
+↓
+
+Generate Tokens
+
+↓
+
+Record Audit Event
+
+↓
+
+Return Result
+```
+
+---
+
+# 8. Repository Layer
+
+Repositories isolate database access.
+
+Responsibilities include:
+
+- Create documents
+- Read documents
+- Update documents
+- Delete documents
+- Execute queries
+
+Repositories never:
+
+- Generate JWTs
+- Verify passwords
+- Send emails
+- Apply business rules
+
+---
+
+## Repository Flow
+
+```
+Service
+
+↓
+
+Repository Interface
+
+↓
+
+Repository Implementation
+
+↓
+
+Mongoose Model
+
+↓
+
+MongoDB
+```
+
+All database operations are isolated behind repository interfaces.
+
+---
+
+# 9. Response Generation
+
+Controllers return:
+
+```
+Result<T, E>
+```
+
+The shared `handle()` helper converts the result into HTTP responses.
+
+```
+Controller
+
+↓
+
+Result
 
 ↓
 
@@ -1213,4 +618,369 @@ BaseResponse
 HTTP Response
 ```
 
-This single, consistent flow is the foundation for the entire platform and should never be bypassed.
+Successful responses use:
+
+```
+BaseResponse<T>
+```
+
+Errors use:
+
+```
+BaseErrorResponse
+```
+
+This provides a consistent API across every module.
+
+---
+
+# Cookies
+
+Authentication endpoints additionally set:
+
+- Access Token Cookie
+- Refresh Token Cookie
+
+Controllers are responsible for writing cookies to the response.
+
+---
+
+# 10. Error Handling
+
+Errors follow a centralized pipeline.
+
+```
+Repository
+
+↓
+
+Infrastructure Error
+
+↓
+
+Service
+
+↓
+
+Domain Error
+
+↓
+
+Controller
+
+↓
+
+Result
+
+↓
+
+handle()
+
+↓
+
+HTTP Status
+
+↓
+
+BaseErrorResponse
+```
+
+Unexpected errors are handled by the global error handler.
+
+Stack traces are hidden in production.
+
+---
+
+## Validation Errors
+
+```
+400 Bad Request
+```
+
+Returned before controllers execute.
+
+---
+
+## Authentication Errors
+
+```
+401 Unauthorized
+```
+
+Examples:
+
+- Invalid JWT
+- Missing JWT
+- Expired Session
+
+---
+
+## Authorization Errors
+
+```
+403 Forbidden
+```
+
+Returned when the authenticated user lacks the required permission.
+
+---
+
+## Infrastructure Errors
+
+Database failures are translated into safe error responses rather than exposing database details.
+
+---
+
+# 11. Authentication & Authorization Flow
+
+Protected request example:
+
+```
+Client
+
+↓
+
+Access Token Cookie
+
+↓
+
+verifyJwt
+
+↓
+
+Authenticated User
+
+↓
+
+requirePermission()
+
+↓
+
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository
+
+↓
+
+MongoDB
+
+↓
+
+Response
+```
+
+Authentication always occurs before authorization.
+
+---
+
+# Session Refresh Flow
+
+```
+Expired Access Token
+
+↓
+
+Refresh Endpoint
+
+↓
+
+Session Lookup
+
+↓
+
+Verify Refresh Token
+
+↓
+
+Rotate Refresh Token
+
+↓
+
+Issue New Access Token
+
+↓
+
+Set Cookies
+
+↓
+
+Response
+```
+
+Only one valid refresh token exists per session at any given time.
+
+---
+
+# 12. API Key Request Flow
+
+Applications authenticate differently from users.
+
+```
+Client
+
+↓
+
+X-API-Key
+
+↓
+
+API Key Middleware
+
+↓
+
+Hash Key
+
+↓
+
+Lookup API Key
+
+↓
+
+Verify Status
+
+↓
+
+Attach Application
+
+↓
+
+Controller
+
+↓
+
+Response
+```
+
+This flow is intended for server-to-server communication.
+
+---
+
+# 13. Current Status
+
+## Implemented
+
+✅ Express Request Pipeline
+
+✅ Middleware Chain
+
+✅ Zod Validation
+
+✅ JWT Authentication
+
+✅ Permission Middleware
+
+✅ API Key Middleware
+
+✅ Controllers
+
+✅ Services
+
+✅ Repository Pattern
+
+✅ MongoDB Integration
+
+✅ Centralized Response Handling
+
+✅ Global Error Handler
+
+✅ Session Management
+
+✅ Refresh Token Rotation
+
+---
+
+## Partially Implemented
+
+- Tenant resolution middleware exists but tenant isolation is not yet fully enforced.
+- Audit logging is implemented but does not yet cover every security-sensitive action.
+
+---
+
+## Not Implemented
+
+- Background Job Pipeline
+- Queue Processing
+- Distributed Event Bus
+- GraphQL Request Pipeline
+- gRPC Request Pipeline
+- Request Tracing (OpenTelemetry)
+
+---
+
+# 14. Future Improvements
+
+## Distributed Request Tracing
+
+Future requests may include trace IDs.
+
+```
+Client
+
+↓
+
+Trace ID
+
+↓
+
+Application
+
+↓
+
+Database
+
+↓
+
+Logs
+
+↓
+
+Monitoring
+```
+
+---
+
+## Background Jobs
+
+Long-running work may move into queues.
+
+Examples:
+
+- Email Sending
+- Audit Export
+- Webhooks
+- Notifications
+
+---
+
+## Redis Integration
+
+Redis will support:
+
+- Rate Limiting
+- Session Caching
+- Permission Caching
+
+---
+
+## Observability
+
+Future production deployments may integrate:
+
+- OpenTelemetry
+- Prometheus
+- Grafana
+- Loki / ELK
+
+---
+
+# Request Lifecycle Summary
+
+Every request in Aegis follows a consistent pipeline from Express routing through middleware, controllers, services, repositories, and MongoDB before returning a standardized response.
+
+Each layer has a single responsibility, making the system predictable, testable, and easy to extend. Authentication, authorization, validation, session management, and centralized error handling are all integrated into this lifecycle, providing a solid foundation for future scalability.
