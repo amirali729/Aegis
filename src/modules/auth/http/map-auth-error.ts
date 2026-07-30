@@ -9,6 +9,10 @@ const errorMap: Record<AuthError['kind'], (error: AuthError) => BaseErrorRespons
 
   invalid_password: (error) => new BaseErrorResponse(error.message, 401),
 
+  invalid_credentials: (error) => new BaseErrorResponse(error.message, 401),
+
+  account_locked: (error) => new BaseErrorResponse(error.message, 423),
+
   user_not_found: (error) => new BaseErrorResponse(error.message, 404),
 
   invalid_token: (error) => new BaseErrorResponse(error.message, 401),

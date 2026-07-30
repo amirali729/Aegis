@@ -31,7 +31,9 @@ import type { ResetPasswordDto } from '../dto/reset-password.dto.js';
 import type { SignUpDto } from '../dto/signup.dto.js';
 import type { VerifyEmailDto } from '../dto/verify-email.dto.js';
 
+import { AccountLockedError } from '../errors/account-locked.error.js';
 import { EmailAlreadyExistsError } from '../errors/email-already-exists.error.js';
+import { InvalidCredentialsError } from '../errors/invalid-credentials.error.js';
 import { InvalidPasswordError } from '../errors/invalid-password.error.js';
 import { InvalidResetTokenError } from '../errors/invalid-reset-token.error.js';
 import { InvalidTokenError } from '../errors/invalid-token.error.js';
@@ -73,8 +75,8 @@ export class AuthService implements IAuthService {
     private readonly auditLogger?: IAuditLogger,
   ) {}
 
-  async signUp(dto: SignUpDto): Promise<SignUpResult> {
-    const existing = await this.repository.findByEmailOrUsername(dto.email, dto.username);
+  async signUp(dto: SignUpDto, tenantId?: string): Promise<SignUpResult> {
+    const existing = await this.repository.findByEmailOrUsername(dto.email, dto.username, tenantId);
 
     if (!existing.ok) {
       return err(existing.error);
@@ -87,7 +89,7 @@ export class AuthService implements IAuthService {
       return err(new UsernameAlreadyExistsError());
     }
 
-    const created = await this.repository.createUser(dto);
+    const created = await this.repository.createUser(dto, tenantId);
 
     if (!created.ok) {
       return err(created.error);
@@ -126,14 +128,18 @@ export class AuthService implements IAuthService {
         'user',
         'user',
         user._id.toString(),
+        undefined,
+        undefined,
+        undefined,
+        tenantId,
       ),
     );
 
     return ok(new SignUpResponse(toUserResponse(saved.value)));
   }
 
-  async login(dto: LoginDto, deviceInfo: DeviceInfo): Promise<LoginResult> {
-    const found = await this.repository.findByUsername(dto.username);
+  async login(dto: LoginDto, deviceInfo: DeviceInfo, tenantId?: string): Promise<LoginResult> {
+    const found = await this.repository.findByUsername(dto.username, tenantId);
 
     if (!found.ok) {
       return err(found.error);
@@ -153,14 +159,14 @@ export class AuthService implements IAuthService {
           { reason: 'user_not_found', username: dto.username },
         ),
       );
-      return err(new UserNotFoundError());
+      // Deliberately the same error/status as a wrong password below -
+      // see invalid-credentials.error.ts for why.
+      return err(new InvalidCredentialsError());
     }
 
     const user = found.value;
 
-    const isPasswordCorrect = await user.isPasswordCorrect(dto.password);
-
-    if (!isPasswordCorrect) {
+    if (user.isLocked()) {
       void this.auditLogger?.record(
         new RecordAuditEventDto(
           'auth.login',
@@ -171,11 +177,36 @@ export class AuthService implements IAuthService {
           user._id.toString(),
           deviceInfo.ipAddress,
           deviceInfo.userAgent,
-          { reason: 'invalid_password' },
+          { reason: 'account_locked' },
         ),
       );
-      return err(new InvalidPasswordError());
+      return err(new AccountLockedError());
     }
+
+    const isPasswordCorrect = await user.isPasswordCorrect(dto.password);
+
+    if (!isPasswordCorrect) {
+      await user.registerFailedLogin();
+
+      void this.auditLogger?.record(
+        new RecordAuditEventDto(
+          'auth.login',
+          false,
+          user._id.toString(),
+          'user',
+          'user',
+          user._id.toString(),
+          deviceInfo.ipAddress,
+          deviceInfo.userAgent,
+          user.isLocked()
+            ? { reason: 'invalid_password', accountLocked: true }
+            : { reason: 'invalid_password' },
+        ),
+      );
+      return err(new InvalidCredentialsError());
+    }
+
+    await user.registerSuccessfulLogin();
 
     const accessToken = user.generateAccessToken();
 
