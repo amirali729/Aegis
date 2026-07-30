@@ -14,7 +14,7 @@ import authRouter from './modules/auth/routes/auth.routes.js';
 import invitationPublicRouter from './modules/invitation/routes/invitation-public.routes.js';
 import invitationRouter from './modules/invitation/routes/invitation.routes.js';
 import membershipRouter from './modules/membership/routes/membership.routes.js';
-import organizationRouter from './modules/organization/routes/organization.routes.js';
+import organizationRouter from './modules/organizations/routes/organization.routes.js';
 import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
 import sessionRouter from './modules/session/routes/session.routes.js';

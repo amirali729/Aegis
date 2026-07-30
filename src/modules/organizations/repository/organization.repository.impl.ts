@@ -9,7 +9,7 @@ import type {
   IOrganizationRepository,
 } from './interface/organization.repository.interface.js';
 
-export class OrgnizationRepository implements IOrganizationRepository {
+export class OrganizationRepository implements IOrganizationRepository {
   async findAll(): Promise<DataResult<IOrganization[]>> {
     try {
       const tenants = await Tenant.find().sort({
