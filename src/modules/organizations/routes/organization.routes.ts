@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { OrganizationController } from '../controller/organization.controller.impl.js';
 import { mapTenantError } from '../http/map-organization-error.js';
-import { OrgnizationRepository } from '../repository/organization.repository.impl.js';
+import { OrganizationRepository } from '../repository/organization.repository.impl.js';
 import { OrganizationService } from '../service/organization.service.impl.js';
 
 import { handle } from '../../../shared/http/handle.js';
@@ -27,7 +27,7 @@ import {
 
 const router = Router();
 
-const organizationRepository = new OrgnizationRepository();
+const organizationRepository = new OrganizationRepository();
 const organizationService = new OrganizationService(organizationRepository);
 const tenantController = new OrganizationController(organizationService);
 
