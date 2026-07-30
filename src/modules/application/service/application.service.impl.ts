@@ -5,6 +5,8 @@ import type { UpdateApplicationDto } from '../dto/update-application.dto.js';
 import { ApplicationNotFoundError } from '../errors/application-not-found.error.js';
 import { InvalidClientCredentialsError } from '../errors/invalid-client-credentials.error.js';
 import type { IApplicationRepository } from '../repository/interface/application.repository.interface.js';
+import { ApplicationCreatedResponse } from '../responses/application-created.response.js';
+import { RegenerateSecretResponse } from '../responses/regenerate-secret.response.js';
 import type {
   ApplicationCreatedResult,
   ApplicationListResult,
@@ -13,14 +15,18 @@ import type {
   RegenerateSecretResult,
   VerifyApiKeyResult,
 } from '../types/application.types.js';
-import type { IApplicationService } from './interface/application.service.interface.js';
-import { generateClientId, generateClientSecret } from './credential-generator.js';
 import { toApplicationResponse } from './application-mapper.js';
-import { ApplicationCreatedResponse } from '../responses/application-created.response.js';
-import { RegenerateSecretResponse } from '../responses/regenerate-secret.response.js';
+import { generateClientId, generateClientSecret } from './credential-generator.js';
+import type { IApplicationService } from './interface/application.service.interface.js';
+
+import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
+import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
 
 export class ApplicationService implements IApplicationService {
-  constructor(private readonly repository: IApplicationRepository) {}
+  constructor(
+    private readonly repository: IApplicationRepository,
+    private readonly auditLogger?: IAuditLogger,
+  ) {}
 
   async list(tenantId: string | undefined): Promise<ApplicationListResult> {
     const found = await this.repository.findAll(tenantId);
@@ -32,14 +38,14 @@ export class ApplicationService implements IApplicationService {
     return ok(found.value.map(toApplicationResponse));
   }
 
-  async getById(id: string): Promise<ApplicationResult> {
+  async getById(id: string, tenantId: string | undefined): Promise<ApplicationResult> {
     const found = await this.repository.findById(id);
 
     if (!found.ok) {
       return err(found.error);
     }
 
-    if (!found.value) {
+    if (!found.value || !this.belongsToTenant(found.value.tenantId?.toString(), tenantId)) {
       return err(new ApplicationNotFoundError());
     }
 
@@ -49,6 +55,7 @@ export class ApplicationService implements IApplicationService {
   async create(
     dto: CreateApplicationDto,
     tenantId: string | undefined,
+    actorId?: string,
   ): Promise<ApplicationCreatedResult> {
     const clientId = generateClientId();
     const clientSecret = generateClientSecret();
@@ -64,10 +71,44 @@ export class ApplicationService implements IApplicationService {
       return err(created.error);
     }
 
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'application.created',
+        true,
+        actorId,
+        'user',
+        'application',
+        created.value._id.toString(),
+        undefined,
+        undefined,
+        { clientId },
+        tenantId,
+      ),
+    );
+
     return ok(new ApplicationCreatedResponse(toApplicationResponse(created.value), clientSecret));
   }
 
-  async update(id: string, dto: UpdateApplicationDto): Promise<ApplicationResult> {
+  async update(
+    id: string,
+    dto: UpdateApplicationDto,
+    tenantId: string | undefined,
+  ): Promise<ApplicationResult> {
+    // Fetch-then-compare instead of trusting the id alone: without this,
+    // any caller with generic "application:update" permission could
+    // update another tenant's application just by knowing/guessing its
+    // ObjectId (IDOR). undefined tenantId (single-tenant deployments)
+    // matches undefined-owned applications only, same as before.
+    const existing = await this.repository.findById(id);
+
+    if (!existing.ok) {
+      return err(existing.error);
+    }
+
+    if (!existing.value || !this.belongsToTenant(existing.value.tenantId?.toString(), tenantId)) {
+      return err(new ApplicationNotFoundError());
+    }
+
     const updated = await this.repository.update(id, dto);
 
     if (!updated.ok) {
@@ -81,7 +122,17 @@ export class ApplicationService implements IApplicationService {
     return ok(toApplicationResponse(updated.value));
   }
 
-  async delete(id: string): Promise<DeleteApplicationResult> {
+  async delete(id: string, tenantId: string | undefined): Promise<DeleteApplicationResult> {
+    const existing = await this.repository.findById(id);
+
+    if (!existing.ok) {
+      return err(existing.error);
+    }
+
+    if (!existing.value || !this.belongsToTenant(existing.value.tenantId?.toString(), tenantId)) {
+      return err(new ApplicationNotFoundError());
+    }
+
     const deleted = await this.repository.delete(id);
 
     if (!deleted.ok) {
@@ -95,14 +146,17 @@ export class ApplicationService implements IApplicationService {
     return ok({ message: 'Application deleted successfully.' });
   }
 
-  async regenerateSecret(id: string): Promise<RegenerateSecretResult> {
+  async regenerateSecret(
+    id: string,
+    tenantId: string | undefined,
+  ): Promise<RegenerateSecretResult> {
     const existing = await this.repository.findById(id);
 
     if (!existing.ok) {
       return err(existing.error);
     }
 
-    if (!existing.value) {
+    if (!existing.value || !this.belongsToTenant(existing.value.tenantId?.toString(), tenantId)) {
       return err(new ApplicationNotFoundError());
     }
 
@@ -119,6 +173,21 @@ export class ApplicationService implements IApplicationService {
     }
 
     return ok(new RegenerateSecretResponse(updated.value.clientId, clientSecret));
+  }
+
+  /**
+   * True if a resource owned by `resourceTenantId` is visible to a
+   * caller resolved to `callerTenantId`. In single-tenant deployments
+   * (MULTI_TENANT=false) callerTenantId is always undefined, so this
+   * only ever compares undefined === undefined - i.e. always true,
+   * matching pre-existing behavior exactly. It only starts restricting
+   * access once tenant resolution is actually enabled.
+   */
+  private belongsToTenant(
+    resourceTenantId: string | undefined,
+    callerTenantId: string | undefined,
+  ): boolean {
+    return resourceTenantId === callerTenantId;
   }
 
   async verifyClientCredentials(

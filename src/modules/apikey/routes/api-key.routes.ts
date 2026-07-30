@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { ApplicationRepository } from '../../application/repository/application.repository.impl.js';
+import { auditService } from '../../audit/routes/audit.routes.js';
 import { ApiKeyController } from '../controller/api-key.controller.impl.js';
 import { mapApplicationError } from '../http/map-api-key-error.js';
 import { ApiKeyRepository } from '../repository/apikey.repository.impl.js';
@@ -27,7 +28,7 @@ const router = Router();
 const applicationRepository = new ApplicationRepository();
 const apiKeyRepository = new ApiKeyRepository();
 
-const apiKeyService = new ApiKeyService(apiKeyRepository, applicationRepository);
+const apiKeyService = new ApiKeyService(apiKeyRepository, applicationRepository, auditService);
 
 const apiKeyController = new ApiKeyController(apiKeyService);
 

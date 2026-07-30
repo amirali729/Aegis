@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
-import dbConnection from '../shared/database/dbconnection.js';
 import { Permission } from '../modules/permission/model/permission.model.js';
 import { Role } from '../modules/role/model/role.model.js';
+import dbConnection from '../shared/database/dbconnection.js';
 import { DEFAULT_PERMISSIONS, DEFAULT_ROLES } from './rbac-defaults.js';
 
 dotenv.config({ path: './src/shared/config/.env' });
@@ -14,8 +14,11 @@ async function seedRbac() {
   const permissionIdByKey = new Map<string, string>();
 
   for (const permission of DEFAULT_PERMISSIONS) {
+    // Scoped to tenantId: undefined (the platform-global permission set)
+    // - now that key uniqueness is per-tenant, matching on `key` alone
+    // could otherwise land on some tenant's own same-named permission.
     const doc = await Permission.findOneAndUpdate(
-      { key: permission.key },
+      { key: permission.key, tenantId: { $exists: false } },
       { key: permission.key, description: permission.description },
       { upsert: true, new: true },
     );
@@ -38,7 +41,7 @@ async function seedRbac() {
           });
 
     await Role.findOneAndUpdate(
-      { name: role.name },
+      { name: role.name, tenantId: { $exists: false } },
       {
         $setOnInsert: {
           name: role.name,

@@ -13,6 +13,7 @@ export class DefaultRoleProvider implements IDefaultRoleProvider {
 
     const role = await Role.findOne({
       name: DEFAULT_ROLE_NAME,
+      tenantId: { $exists: false },
     }).select('_id');
 
     if (!role) {

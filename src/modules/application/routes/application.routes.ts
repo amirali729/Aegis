@@ -1,5 +1,6 @@
 import { Router } from 'express';
 
+import { auditService } from '../../audit/routes/audit.routes.js';
 import { ApplicationRepository } from '../repository/application.repository.impl.js';
 // import { ApiKeyRepository } from '../repository/api-key.repository.impl.js';
 import { ApplicationService } from '../service/application.service.impl.js';
@@ -34,7 +35,7 @@ const router = Router();
 
 const applicationRepository = new ApplicationRepository();
 
-const applicationService = new ApplicationService(applicationRepository);
+const applicationService = new ApplicationService(applicationRepository, auditService);
 
 const applicationController = new ApplicationController(applicationService);
 

@@ -7,11 +7,21 @@ import type {
 } from '../../types/api-key.types.js';
 
 export interface IApiKeyService {
-  list(applicationId: string): Promise<ApiKeyListResult>;
+  list(applicationId: string, tenantId: string | undefined): Promise<ApiKeyListResult>;
 
-  create(applicationId: string, dto: CreateApiKeyDto): Promise<ApiKeyCreatedResult>;
+  create(
+    applicationId: string,
+    dto: CreateApiKeyDto,
+    tenantId: string | undefined,
+    actorId?: string,
+  ): Promise<ApiKeyCreatedResult>;
 
-  revoke(applicationId: string, apiKeyId: string): Promise<RevokeApiKeyResult>;
+  revoke(
+    applicationId: string,
+    apiKeyId: string,
+    tenantId: string | undefined,
+    actorId?: string,
+  ): Promise<RevokeApiKeyResult>;
 
   /**
    * Verifies a raw API key presented in a request header, returning the

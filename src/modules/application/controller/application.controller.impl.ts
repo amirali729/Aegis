@@ -1,8 +1,7 @@
-import type { Request, Response, NextFunction } from 'express';
-import type { IApplicationController } from './interface/application.controller.interface.js';
-import type { IApplicationService } from '../service/interface/application.service.interface.js';
+import type { NextFunction, Request, Response } from 'express';
 import { CreateApplicationDto } from '../dto/create-application.dto.js';
 import { UpdateApplicationDto } from '../dto/update-application.dto.js';
+import type { IApplicationService } from '../service/interface/application.service.interface.js';
 import type {
   ApplicationCreatedResult,
   ApplicationListResult,
@@ -10,6 +9,7 @@ import type {
   DeleteApplicationResult,
   RegenerateSecretResult,
 } from '../types/application.types.js';
+import type { IApplicationController } from './interface/application.controller.interface.js';
 
 export class ApplicationController implements IApplicationController {
   constructor(private readonly service: IApplicationService) {}
@@ -19,7 +19,7 @@ export class ApplicationController implements IApplicationController {
   }
 
   async getById(req: Request, _res: Response, _next: NextFunction): Promise<ApplicationResult> {
-    return this.service.getById(req.params.id as string);
+    return this.service.getById(req.params.id as string, req.tenantId);
   }
 
   async create(
@@ -35,7 +35,7 @@ export class ApplicationController implements IApplicationController {
       req.body.refreshTokenTTL ?? '7d',
     );
 
-    return this.service.create(dto, req.tenantId);
+    return this.service.create(dto, req.tenantId, req.user?._id?.toString());
   }
 
   async update(req: Request, _res: Response, _next: NextFunction): Promise<ApplicationResult> {
@@ -48,7 +48,7 @@ export class ApplicationController implements IApplicationController {
       req.body.isActive,
     );
 
-    return this.service.update(req.params.id as string, dto);
+    return this.service.update(req.params.id as string, dto, req.tenantId);
   }
 
   async delete(
@@ -56,7 +56,7 @@ export class ApplicationController implements IApplicationController {
     _res: Response,
     _next: NextFunction,
   ): Promise<DeleteApplicationResult> {
-    return this.service.delete(req.params.id as string);
+    return this.service.delete(req.params.id as string, req.tenantId);
   }
 
   async regenerateSecret(
@@ -64,6 +64,6 @@ export class ApplicationController implements IApplicationController {
     _res: Response,
     _next: NextFunction,
   ): Promise<RegenerateSecretResult> {
-    return this.service.regenerateSecret(req.params.id as string);
+    return this.service.regenerateSecret(req.params.id as string, req.tenantId);
   }
 }

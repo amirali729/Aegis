@@ -12,18 +12,23 @@ import type {
 export interface IApplicationService {
   list(tenantId: string | undefined): Promise<ApplicationListResult>;
 
-  getById(id: string): Promise<ApplicationResult>;
+  getById(id: string, tenantId: string | undefined): Promise<ApplicationResult>;
 
   create(
     dto: CreateApplicationDto,
     tenantId: string | undefined,
+    actorId?: string,
   ): Promise<ApplicationCreatedResult>;
 
-  update(id: string, dto: UpdateApplicationDto): Promise<ApplicationResult>;
+  update(
+    id: string,
+    dto: UpdateApplicationDto,
+    tenantId: string | undefined,
+  ): Promise<ApplicationResult>;
 
-  delete(id: string): Promise<DeleteApplicationResult>;
+  delete(id: string, tenantId: string | undefined): Promise<DeleteApplicationResult>;
 
-  regenerateSecret(id: string): Promise<RegenerateSecretResult>;
+  regenerateSecret(id: string, tenantId: string | undefined): Promise<RegenerateSecretResult>;
 
   verifyClientCredentials(clientId: string, clientSecret: string): Promise<VerifyApiKeyResult>;
 }

@@ -1,25 +1,25 @@
 import { Router } from 'express';
 
-import { TenantRepository } from '../repository/tenant.repository.impl.js';
-import { TenantService } from '../service/tenant.service.impl.js';
 import { TenantController } from '../controller/tenant.controller.impl.js';
 import { mapTenantError } from '../http/map-tenant-error.js';
+import { TenantRepository } from '../repository/tenant.repository.impl.js';
+import { TenantService } from '../service/tenant.service.impl.js';
 
 import { handle } from '../../../shared/http/handle.js';
 import { HttpStatus } from '../../../shared/http/http-status.js';
 import { validate } from '../../../shared/http/validate.js';
-import { verifyjwt } from '../../../shared/security/middleware/verifyJwt.middleware.js';
 import { requirePermission } from '../../../shared/security/middleware/requirePermission.middleware.js';
+import { verifyjwt } from '../../../shared/security/middleware/verifyJwt.middleware.js';
 import { objectIdParamSchema } from '../../../shared/validation/object-id.schema.js';
 
 import { createTenantSchema, updateTenantSchema } from '../validation/tenant.schemas.js';
 
 import {
-  TENANT_LIST,
-  TENANT_GET_BY_ID,
   TENANT_CREATE,
-  TENANT_UPDATE,
   TENANT_DELETE,
+  TENANT_GET_BY_ID,
+  TENANT_LIST,
+  TENANT_UPDATE,
 } from '../../../shared/api-endpoint/tenant.api.endpoint.js';
 
 const router = Router();

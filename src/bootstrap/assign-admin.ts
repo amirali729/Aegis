@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
-import dbConnection from '../shared/database/dbconnection.js';
 import { User } from '../modules/auth/model/user.model.js';
 import { Role } from '../modules/role/model/role.model.js';
+import dbConnection from '../shared/database/dbconnection.js';
 
 dotenv.config({ path: './src/shared/config/.env' });
 
@@ -17,7 +17,7 @@ async function assignAdmin() {
 
   await dbConnection();
 
-  const adminRole = await Role.findOne({ name: 'Admin' });
+  const adminRole = await Role.findOne({ name: 'Admin', tenantId: { $exists: false } });
 
   if (!adminRole) {
     console.error('No "Admin" role found. Run `npm run seed:rbac` first.');

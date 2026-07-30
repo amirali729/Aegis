@@ -17,20 +17,27 @@ import type {
 import { toApiKeyResponse } from './api-key.mapper.js';
 import type { IApiKeyService } from './interface/api-key.service.interface.js';
 
+import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
+import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
+
 export class ApiKeyService implements IApiKeyService {
   constructor(
     private readonly apiKeyRepository: IApiKeyRepository,
     private readonly applicationRepository: IApplicationRepository,
+    private readonly auditLogger?: IAuditLogger,
   ) {}
 
-  async list(applicationId: string): Promise<ApiKeyListResult> {
+  async list(applicationId: string, tenantId: string | undefined): Promise<ApiKeyListResult> {
     const application = await this.applicationRepository.findById(applicationId);
 
     if (!application.ok) {
       return err(application.error);
     }
 
-    if (!application.value) {
+    // Fetch-then-compare: without this, anyone with generic
+    // "apikey:view" permission could list another tenant's API keys by
+    // guessing/knowing the applicationId (IDOR).
+    if (!application.value || application.value.tenantId?.toString() !== tenantId) {
       return err(new ApplicationNotFoundError());
     }
 
@@ -43,14 +50,19 @@ export class ApiKeyService implements IApiKeyService {
     return ok(found.value.map(toApiKeyResponse));
   }
 
-  async create(applicationId: string, dto: CreateApiKeyDto): Promise<ApiKeyCreatedResult> {
+  async create(
+    applicationId: string,
+    dto: CreateApiKeyDto,
+    tenantId: string | undefined,
+    actorId?: string,
+  ): Promise<ApiKeyCreatedResult> {
     const application = await this.applicationRepository.findById(applicationId);
 
     if (!application.ok) {
       return err(application.error);
     }
 
-    if (!application.value) {
+    if (!application.value || application.value.tenantId?.toString() !== tenantId) {
       return err(new ApplicationNotFoundError());
     }
 
@@ -72,10 +84,39 @@ export class ApiKeyService implements IApiKeyService {
       return err(created.error);
     }
 
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'apikey.created',
+        true,
+        actorId,
+        'user',
+        'apikey',
+        created.value._id.toString(),
+        undefined,
+        undefined,
+        { applicationId, keyPrefix },
+      ),
+    );
+
     return ok(new ApiKeyCreatedResponse(toApiKeyResponse(created.value), rawKey));
   }
 
-  async revoke(applicationId: string, apiKeyId: string): Promise<RevokeApiKeyResult> {
+  async revoke(
+    applicationId: string,
+    apiKeyId: string,
+    tenantId: string | undefined,
+    actorId?: string,
+  ): Promise<RevokeApiKeyResult> {
+    const application = await this.applicationRepository.findById(applicationId);
+
+    if (!application.ok) {
+      return err(application.error);
+    }
+
+    if (!application.value || application.value.tenantId?.toString() !== tenantId) {
+      return err(new ApplicationNotFoundError());
+    }
+
     const found = await this.apiKeyRepository.findById(apiKeyId);
 
     if (!found.ok) {
@@ -91,6 +132,20 @@ export class ApiKeyService implements IApiKeyService {
     if (!revoked.ok) {
       return err(revoked.error);
     }
+
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'apikey.revoked',
+        true,
+        actorId,
+        'user',
+        'apikey',
+        apiKeyId,
+        undefined,
+        undefined,
+        { applicationId },
+      ),
+    );
 
     return ok({ message: 'API key revoked successfully.' });
   }
