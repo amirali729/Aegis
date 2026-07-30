@@ -1,15 +1,17 @@
 import { Router } from 'express';
 
-import { PermissionRepository } from '../repository/permission.repository.impl.js';
-import { PermissionService } from '../service/permission.service.impl.js';
+import { auditService } from '../../audit/routes/audit.routes.js';
 import { PermissionController } from '../controller/permission.controller.impl.js';
 import { mapPermissionError } from '../http/map-permission-error.js';
+import { PermissionRepository } from '../repository/permission.repository.impl.js';
+import { PermissionService } from '../service/permission.service.impl.js';
 
 import { handle } from '../../../shared/http/handle.js';
 import { HttpStatus } from '../../../shared/http/http-status.js';
 import { validate } from '../../../shared/http/validate.js';
-import { verifyjwt } from '../../../shared/security/middleware/verifyJwt.middleware.js';
 import { requirePermission } from '../../../shared/security/middleware/requirePermission.middleware.js';
+import { resolveTenant } from '../../../shared/security/middleware/resolveTenant.middleware.js';
+import { verifyjwt } from '../../../shared/security/middleware/verifyJwt.middleware.js';
 import { objectIdParamSchema } from '../../../shared/validation/object-id.schema.js';
 
 import {
@@ -18,29 +20,29 @@ import {
 } from '../validation/permission.schemas.js';
 
 import {
-  PERMISSION_LIST,
-  PERMISSION_GET_BY_ID,
   PERMISSION_CREATE,
-  PERMISSION_UPDATE,
   PERMISSION_DELETE,
+  PERMISSION_GET_BY_ID,
+  PERMISSION_LIST,
+  PERMISSION_UPDATE,
 } from '../../../shared/api-endpoint/permission.api.endpoint.js';
 
 const router = Router();
 
 const permissionRepository = new PermissionRepository();
-const permissionService = new PermissionService(permissionRepository);
+const permissionService = new PermissionService(permissionRepository, auditService);
 const permissionController = new PermissionController(permissionService);
+
+router.use(verifyjwt, resolveTenant);
 
 router.get(
   PERMISSION_LIST,
-  verifyjwt,
   requirePermission('permission:view'),
   handle(permissionController.list.bind(permissionController), mapPermissionError),
 );
 
 router.get(
   PERMISSION_GET_BY_ID,
-  verifyjwt,
   requirePermission('permission:view'),
   validate({ params: objectIdParamSchema('id') }),
   handle(permissionController.getById.bind(permissionController), mapPermissionError),
@@ -48,7 +50,6 @@ router.get(
 
 router.post(
   PERMISSION_CREATE,
-  verifyjwt,
   requirePermission('permission:create'),
   validate({ body: createPermissionSchema }),
   handle(
@@ -60,7 +61,6 @@ router.post(
 
 router.patch(
   PERMISSION_UPDATE,
-  verifyjwt,
   requirePermission('permission:update'),
   validate({
     params: objectIdParamSchema('id'),
@@ -71,7 +71,6 @@ router.patch(
 
 router.delete(
   PERMISSION_DELETE,
-  verifyjwt,
   requirePermission('permission:delete'),
   validate({ params: objectIdParamSchema('id') }),
   handle(permissionController.delete.bind(permissionController), mapPermissionError),

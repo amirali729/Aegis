@@ -10,19 +10,19 @@ import type {
 } from '../../types/role.types.js';
 
 export interface IRoleService {
-  list(): Promise<RoleListResult>;
+  list(tenantId: string | undefined): Promise<RoleListResult>;
 
   getById(id: string): Promise<RoleResult>;
 
-  create(dto: CreateRoleDto): Promise<RoleResult>;
+  create(dto: CreateRoleDto, tenantId: string | undefined, actorId?: string): Promise<RoleResult>;
 
-  updateMeta(id: string, dto: UpdateRoleDto): Promise<RoleResult>;
+  updateMeta(id: string, dto: UpdateRoleDto, actorId?: string): Promise<RoleResult>;
 
-  setPermissions(id: string, dto: SetRolePermissionsDto): Promise<RoleResult>;
+  setPermissions(id: string, dto: SetRolePermissionsDto, actorId?: string): Promise<RoleResult>;
 
-  delete(id: string): Promise<DeleteRoleResult>;
+  delete(id: string, actorId?: string): Promise<DeleteRoleResult>;
 
-  assignToUser(dto: AssignRoleDto): Promise<AssignRoleResult>;
+  assignToUser(dto: AssignRoleDto, actorId?: string): Promise<AssignRoleResult>;
 
-  removeFromUser(dto: AssignRoleDto): Promise<AssignRoleResult>;
+  removeFromUser(dto: AssignRoleDto, actorId?: string): Promise<AssignRoleResult>;
 }

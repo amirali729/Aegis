@@ -1,22 +1,22 @@
-import type { Request, Response, NextFunction } from 'express';
-import type { IRoleController } from './interface/role.controller.interface.js';
-import type { IRoleService } from '../service/interface/role.service.interface.js';
-import { CreateRoleDto } from '../dto/create-role.dto.js';
-import { UpdateRoleDto } from '../dto/update-role.dto.js';
-import { SetRolePermissionsDto } from '../dto/set-role-permission.dto.js';
+import type { NextFunction, Request, Response } from 'express';
 import { AssignRoleDto } from '../dto/assign-role.dto.js';
+import { CreateRoleDto } from '../dto/create-role.dto.js';
+import { SetRolePermissionsDto } from '../dto/set-role-permission.dto.js';
+import { UpdateRoleDto } from '../dto/update-role.dto.js';
+import type { IRoleService } from '../service/interface/role.service.interface.js';
 import type {
   AssignRoleResult,
   DeleteRoleResult,
   RoleListResult,
   RoleResult,
 } from '../types/role.types.js';
+import type { IRoleController } from './interface/role.controller.interface.js';
 
 export class RoleController implements IRoleController {
   constructor(private readonly service: IRoleService) {}
 
-  async list(_req: Request, _res: Response, _next: NextFunction): Promise<RoleListResult> {
-    return this.service.list();
+  async list(req: Request, _res: Response, _next: NextFunction): Promise<RoleListResult> {
+    return this.service.list(req.tenantId);
   }
 
   async getById(req: Request, _res: Response, _next: NextFunction): Promise<RoleResult> {
@@ -30,29 +30,29 @@ export class RoleController implements IRoleController {
       req.body.permissionIds ?? [],
     );
 
-    return this.service.create(dto);
+    return this.service.create(dto, req.tenantId, req.user?._id?.toString());
   }
 
   async updateMeta(req: Request, _res: Response, _next: NextFunction): Promise<RoleResult> {
     const dto = new UpdateRoleDto(req.body.name, req.body.description);
 
-    return this.service.updateMeta(req.params.id as string, dto);
+    return this.service.updateMeta(req.params.id as string, dto, req.user?._id?.toString());
   }
 
   async setPermissions(req: Request, _res: Response, _next: NextFunction): Promise<RoleResult> {
     const dto = new SetRolePermissionsDto(req.body.permissionIds ?? []);
 
-    return this.service.setPermissions(req.params.id as string, dto);
+    return this.service.setPermissions(req.params.id as string, dto, req.user?._id?.toString());
   }
 
   async delete(req: Request, _res: Response, _next: NextFunction): Promise<DeleteRoleResult> {
-    return this.service.delete(req.params.id as string);
+    return this.service.delete(req.params.id as string, req.user?._id?.toString());
   }
 
   async assignToUser(req: Request, _res: Response, _next: NextFunction): Promise<AssignRoleResult> {
     const dto = new AssignRoleDto(req.params.userId as string, req.body.roleId);
 
-    return this.service.assignToUser(dto);
+    return this.service.assignToUser(dto, req.user?._id?.toString());
   }
 
   async removeFromUser(
@@ -62,6 +62,6 @@ export class RoleController implements IRoleController {
   ): Promise<AssignRoleResult> {
     const dto = new AssignRoleDto(req.params.userId as string, req.params.roleId as string);
 
-    return this.service.removeFromUser(dto);
+    return this.service.removeFromUser(dto, req.user?._id?.toString());
   }
 }

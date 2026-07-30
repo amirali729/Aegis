@@ -11,5 +11,6 @@ export class RecordAuditEventDto {
     public readonly ipAddress?: string,
     public readonly userAgent?: string,
     public readonly metadata?: Record<string, unknown>,
+    public readonly tenantId?: string,
   ) {}
 }

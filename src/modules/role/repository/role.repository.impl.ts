@@ -7,9 +7,11 @@ import { Role } from '../model/role.model.js';
 import type { DataResult, IRoleRepository } from './interface/role.repository.interface.js';
 
 export class RoleRepository implements IRoleRepository {
-  async findAll(): Promise<DataResult<IRole[]>> {
+  async findAll(tenantId: string | undefined): Promise<DataResult<IRole[]>> {
     try {
-      const roles = await Role.find().populate('permissions').sort({ name: 1 });
+      const roles = await Role.find(tenantId ? { tenantId } : {})
+        .populate('permissions')
+        .sort({ name: 1 });
       return ok(roles);
     } catch {
       return err(new InfrastructureError());
@@ -25,9 +27,9 @@ export class RoleRepository implements IRoleRepository {
     }
   }
 
-  async findByName(name: string): Promise<DataResult<IRole | null>> {
+  async findByName(name: string, tenantId: string | undefined): Promise<DataResult<IRole | null>> {
     try {
-      const role = await Role.findOne({ name });
+      const role = await Role.findOne({ name, tenantId: tenantId ?? { $exists: false } });
       return ok(role);
     } catch {
       return err(new InfrastructureError());
@@ -45,9 +47,10 @@ export class RoleRepository implements IRoleRepository {
     }
   }
 
-  async create(dto: CreateRoleDto): Promise<DataResult<IRole>> {
+  async create(dto: CreateRoleDto & { tenantId?: string }): Promise<DataResult<IRole>> {
     try {
       const role = await Role.create({
+        tenantId: dto.tenantId,
         name: dto.name,
         description: dto.description,
         permissions: dto.permissionIds,

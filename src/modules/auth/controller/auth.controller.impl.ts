@@ -34,16 +34,20 @@ export class AuthController implements IAuthController {
   async signUp(req: Request, _res: Response, _next: NextFunction): Promise<SignUpResult> {
     const dto = new SignUpDto(req.body.username, req.body.email, req.body.password);
 
-    return this.service.signUp(dto);
+    return this.service.signUp(dto, req.tenantId);
   }
 
   async login(req: Request, res: Response, _next: NextFunction): Promise<LoginResult> {
     const dto = new LoginDto(req.body.username, req.body.password);
 
-    const result = await this.service.login(dto, {
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.ip,
-    });
+    const result = await this.service.login(
+      dto,
+      {
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+      },
+      req.tenantId,
+    );
 
     if (!result.ok) {
       return result;

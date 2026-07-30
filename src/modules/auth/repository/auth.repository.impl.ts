@@ -16,9 +16,11 @@ export class AuthRepository implements IAuthRepository {
     }
   }
 
-  async findByUsername(username: string): Promise<DataResult<IUser | null>> {
+  async findByUsername(username: string, tenantId?: string): Promise<DataResult<IUser | null>> {
     try {
-      const user = await User.findOne({ username });
+      const user = await User.findOne(tenantId ? { username, tenantId } : { username }).select(
+        '+password',
+      );
       return ok(user);
     } catch (error) {
       console.error(error);
@@ -26,10 +28,15 @@ export class AuthRepository implements IAuthRepository {
     }
   }
 
-  async findByEmailOrUsername(email: string, username: string): Promise<DataResult<IUser | null>> {
+  async findByEmailOrUsername(
+    email: string,
+    username: string,
+    tenantId?: string,
+  ): Promise<DataResult<IUser | null>> {
     try {
       const user = await User.findOne({
         $or: [{ email }, { username }],
+        ...(tenantId && { tenantId }),
       });
       return ok(user);
     } catch (error) {
@@ -40,7 +47,7 @@ export class AuthRepository implements IAuthRepository {
 
   async findById(userId: string): Promise<DataResult<IUser | null>> {
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).select('+password');
       return ok(user);
     } catch (error) {
       console.error(error);
@@ -73,9 +80,10 @@ export class AuthRepository implements IAuthRepository {
     }
   }
 
-  async createUser(dto: SignUpDto): Promise<DataResult<IUser>> {
+  async createUser(dto: SignUpDto, tenantId?: string): Promise<DataResult<IUser>> {
     try {
       const user = await User.create({
+        tenantId,
         username: dto.username,
         email: dto.email,
         password: dto.password,

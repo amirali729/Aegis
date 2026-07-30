@@ -8,5 +8,6 @@ export class ListAuditLogsDto {
     public readonly targetId?: string,
     public readonly from?: Date,
     public readonly to?: Date,
+    public readonly tenantId?: string,
   ) {}
 }

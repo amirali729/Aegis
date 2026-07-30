@@ -1,11 +1,11 @@
+import type { DeviceInfo } from '../../../session/service/interface/session.service.interface.js';
 import type { ChangePasswordDto } from '../../dto/change-password.dto.js';
+import type { ForgotPasswordDto } from '../../dto/forgot-password.dto.js';
 import type { LoginDto } from '../../dto/login.dto.js';
+import type { ResendVerificationDto } from '../../dto/resend-verification.dto.js';
+import type { ResetPasswordDto } from '../../dto/reset-password.dto.js';
 import type { SignUpDto } from '../../dto/signup.dto.js';
 import type { VerifyEmailDto } from '../../dto/verify-email.dto.js';
-import type { ResendVerificationDto } from '../../dto/resend-verification.dto.js';
-import type { ForgotPasswordDto } from '../../dto/forgot-password.dto.js';
-import type { ResetPasswordDto } from '../../dto/reset-password.dto.js';
-import type { DeviceInfo } from '../../../session/service/interface/session.service.interface.js';
 
 import type {
   ChangePasswordResult,
@@ -20,9 +20,9 @@ import type {
 } from '../../types/auth.types.js';
 
 export interface IAuthService {
-  signUp(dto: SignUpDto): Promise<SignUpResult>;
+  signUp(dto: SignUpDto, tenantId?: string): Promise<SignUpResult>;
 
-  login(dto: LoginDto, deviceInfo: DeviceInfo): Promise<LoginResult>;
+  login(dto: LoginDto, deviceInfo: DeviceInfo, tenantId?: string): Promise<LoginResult>;
 
   changePassword(userId: string, dto: ChangePasswordDto): Promise<ChangePasswordResult>;
 

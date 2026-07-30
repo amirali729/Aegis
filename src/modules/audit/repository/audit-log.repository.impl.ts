@@ -13,6 +13,7 @@ export class AuditLogRepository implements IAuditLogRepository {
   async create(dto: RecordAuditEventDto): Promise<DataResult<IAuditLog>> {
     try {
       const log = await AuditLog.create({
+        tenantId: dto.tenantId,
         actorId: dto.actorId,
         actorType: dto.actorType,
         action: dto.action,
@@ -35,6 +36,11 @@ export class AuditLogRepository implements IAuditLogRepository {
     try {
       const query: Record<string, unknown> = {};
 
+      // In a hosted multi-tenant deployment this is the whole point: a
+      // tenant admin listing audit logs must never see another
+      // tenant's entries. filters.tenantId is undefined in single-tenant
+      // deployments, so this is a no-op there.
+      if (filters.tenantId) query.tenantId = filters.tenantId;
       if (filters.actorId) query.actorId = filters.actorId;
       if (filters.action) query.action = filters.action;
       if (filters.targetType) query.targetType = filters.targetType;

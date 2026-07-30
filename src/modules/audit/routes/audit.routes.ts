@@ -8,6 +8,7 @@ import { AuditService } from '../service/audit.service.impl.js';
 import { handle } from '../../../shared/http/handle.js';
 import { validate } from '../../../shared/http/validate.js';
 import { requirePermission } from '../../../shared/security/middleware/requirePermission.middleware.js';
+import { resolveTenant } from '../../../shared/security/middleware/resolveTenant.middleware.js';
 import { verifyjwt } from '../../../shared/security/middleware/verifyJwt.middleware.js';
 
 import { AUDIT_LOG_LIST } from '../../../shared/api-endpoint/audit.api.endpoint.js';
@@ -27,6 +28,7 @@ const auditController = new AuditController(auditService);
 router.get(
   AUDIT_LOG_LIST,
   verifyjwt,
+  resolveTenant,
   requirePermission('audit:view'),
   validate({ query: listAuditLogsQuerySchema }),
   handle(auditController.list.bind(auditController), mapAuditError),

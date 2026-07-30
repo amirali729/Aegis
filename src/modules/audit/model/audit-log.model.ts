@@ -4,6 +4,8 @@ import mongoose, { Schema } from 'mongoose';
 export type AuditActorType = 'user' | 'system' | 'api_key';
 
 export interface IAuditLog extends Document {
+  /** Null in single-tenant self-hosted deployments (MULTI_TENANT=false). */
+  tenantId?: Types.ObjectId;
   /** Who performed the action. Null for actorType "system". */
   actorId?: Types.ObjectId;
   actorType: AuditActorType;
@@ -20,6 +22,13 @@ export interface IAuditLog extends Document {
 
 const auditLogSchema: Schema = new mongoose.Schema(
   {
+    // Field kept as "tenantId" (pre-dates the Organization rename) but
+    // points at the Organization collection - Organization IS the tenant.
+    tenantId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      index: true,
+    },
     actorId: {
       type: Schema.Types.ObjectId,
       ref: 'User',

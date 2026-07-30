@@ -13,13 +13,19 @@ import type {
 import type { IPermissionService } from './interface/permission.service.interface.js';
 import { toPermissionResponse } from './permission.mapper.js';
 
+import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
+import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
+
 const PERMISSION_KEY_PATTERN = /^[a-z0-9_]+:[a-z0-9_]+$/;
 
 export class PermissionService implements IPermissionService {
-  constructor(private readonly repository: IPermissionRepository) {}
+  constructor(
+    private readonly repository: IPermissionRepository,
+    private readonly auditLogger?: IAuditLogger,
+  ) {}
 
-  async list(): Promise<PermissionListResult> {
-    const found = await this.repository.findAll();
+  async list(tenantId: string | undefined): Promise<PermissionListResult> {
+    const found = await this.repository.findAll(tenantId);
 
     if (!found.ok) {
       return err(found.error);
@@ -42,14 +48,18 @@ export class PermissionService implements IPermissionService {
     return ok(toPermissionResponse(found.value));
   }
 
-  async create(dto: CreatePermissionDto): Promise<PermissionResult> {
+  async create(
+    dto: CreatePermissionDto,
+    tenantId: string | undefined,
+    actorId?: string,
+  ): Promise<PermissionResult> {
     const key = dto.key.trim().toLowerCase();
 
     if (!PERMISSION_KEY_PATTERN.test(key)) {
       return err(new InvalidPermissionKeyError());
     }
 
-    const existing = await this.repository.findByKey(key);
+    const existing = await this.repository.findByKey(key, tenantId);
 
     if (!existing.ok) {
       return err(existing.error);
@@ -59,16 +69,33 @@ export class PermissionService implements IPermissionService {
       return err(new PermissionAlreadyExistsError());
     }
 
-    const created = await this.repository.create(new CreatePermissionDto(key, dto.description));
+    const created = await this.repository.create(
+      new CreatePermissionDto(key, dto.description, tenantId),
+    );
 
     if (!created.ok) {
       return err(created.error);
     }
 
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'permission.created',
+        true,
+        actorId,
+        'user',
+        'permission',
+        created.value._id.toString(),
+        undefined,
+        undefined,
+        { key: created.value.key },
+        tenantId,
+      ),
+    );
+
     return ok(toPermissionResponse(created.value));
   }
 
-  async update(id: string, dto: UpdatePermissionDto): Promise<PermissionResult> {
+  async update(id: string, dto: UpdatePermissionDto, actorId?: string): Promise<PermissionResult> {
     const updated = await this.repository.update(id, dto);
 
     if (!updated.ok) {
@@ -79,10 +106,14 @@ export class PermissionService implements IPermissionService {
       return err(new PermissionNotFoundError());
     }
 
+    void this.auditLogger?.record(
+      new RecordAuditEventDto('permission.updated', true, actorId, 'user', 'permission', id),
+    );
+
     return ok(toPermissionResponse(updated.value));
   }
 
-  async delete(id: string): Promise<DeletePermissionResult> {
+  async delete(id: string, actorId?: string): Promise<DeletePermissionResult> {
     const deleted = await this.repository.delete(id);
 
     if (!deleted.ok) {
@@ -92,6 +123,10 @@ export class PermissionService implements IPermissionService {
     if (!deleted.value) {
       return err(new PermissionNotFoundError());
     }
+
+    void this.auditLogger?.record(
+      new RecordAuditEventDto('permission.deleted', true, actorId, 'user', 'permission', id),
+    );
 
     return ok({ message: 'Permission deleted successfully.' });
   }

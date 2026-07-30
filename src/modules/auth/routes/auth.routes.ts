@@ -16,6 +16,7 @@ import {
   authRateLimiter,
   sensitiveActionRateLimiter,
 } from '../../../shared/security/middleware/rate-limit.middleware.js';
+import { resolveTenant } from '../../../shared/security/middleware/resolveTenant.middleware.js';
 import { verifyjwt } from '../../../shared/security/middleware/verifyJwt.middleware.js';
 import { mapAuthError } from '../http/map-auth-error.js';
 
@@ -66,6 +67,7 @@ const authController = new AuthController(authService);
 router.post(
   SIGNUP,
   authRateLimiter,
+  resolveTenant,
   validate({ body: signUpSchema }),
   handle(authController.signUp.bind(authController), mapAuthError, HttpStatus.CREATED),
 );
@@ -73,6 +75,7 @@ router.post(
 router.post(
   LOGIN,
   authRateLimiter,
+  resolveTenant,
   validate({ body: loginSchema }),
   handle(authController.login.bind(authController), mapAuthError),
 );
@@ -83,7 +86,11 @@ router.post(
   handle(authController.refreshAccessToken.bind(authController), mapAuthError),
 );
 
-router.post(VERIFY_EMAIL, handle(authController.verifyEmail.bind(authController), mapAuthError));
+router.post(
+  VERIFY_EMAIL,
+  sensitiveActionRateLimiter,
+  handle(authController.verifyEmail.bind(authController), mapAuthError),
+);
 
 router.post(
   RESEND_VERIFICATION,

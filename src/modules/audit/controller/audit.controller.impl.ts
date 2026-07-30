@@ -17,6 +17,7 @@ export class AuditController implements IAuditController {
       req.query.targetId as string | undefined,
       req.query.from ? new Date(req.query.from as string) : undefined,
       req.query.to ? new Date(req.query.to as string) : undefined,
+      req.tenantId,
     );
 
     return this.service.list(dto);

@@ -1,7 +1,7 @@
+import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
+import type { Result } from '../../../../shared/result/result.js';
 import type { SignUpDto } from '../../dto/signup.dto.js';
 import type { IUser } from '../../model/user.model.js';
-import type { Result } from '../../../../shared/result/result.js';
-import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
 
 export type DataResult<T> = Result<T, InfrastructureError>;
 
@@ -18,9 +18,13 @@ export type DataResult<T> = Result<T, InfrastructureError>;
 export interface IAuthRepository {
   findByEmail(email: string): Promise<DataResult<IUser | null>>;
 
-  findByUsername(username: string): Promise<DataResult<IUser | null>>;
+  findByUsername(username: string, tenantId?: string): Promise<DataResult<IUser | null>>;
 
-  findByEmailOrUsername(email: string, username: string): Promise<DataResult<IUser | null>>;
+  findByEmailOrUsername(
+    email: string,
+    username: string,
+    tenantId?: string,
+  ): Promise<DataResult<IUser | null>>;
 
   findById(userId: string): Promise<DataResult<IUser | null>>;
 
@@ -28,7 +32,7 @@ export interface IAuthRepository {
 
   findByPasswordResetTokenHash(tokenHash: string): Promise<DataResult<IUser | null>>;
 
-  createUser(dto: SignUpDto): Promise<DataResult<IUser>>;
+  createUser(dto: SignUpDto, tenantId?: string): Promise<DataResult<IUser>>;
 
   /**
    * Persists whatever mutations the caller has already made on the
