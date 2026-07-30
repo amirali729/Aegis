@@ -1,17 +1,17 @@
-import type { IPermission } from '../../model/permission.model.js';
-import type { Result } from '../../../../shared/result/result.js';
 import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
+import type { Result } from '../../../../shared/result/result.js';
 import type { CreatePermissionDto } from '../../dto/create-permission.dto.js';
 import type { UpdatePermissionDto } from '../../dto/update-permission.dto.js';
+import type { IPermission } from '../../model/permission.model.js';
 
 export type DataResult<T> = Result<T, InfrastructureError>;
 
 export interface IPermissionRepository {
-  findAll(): Promise<DataResult<IPermission[]>>;
+  findAll(tenantId: string): Promise<DataResult<IPermission[]>>;
 
   findById(id: string): Promise<DataResult<IPermission | null>>;
 
-  findByKey(key: string): Promise<DataResult<IPermission | null>>;
+  findByKey(key: string, tenantId: string): Promise<DataResult<IPermission | null>>;
 
   findByIds(ids: string[]): Promise<DataResult<IPermission[]>>;
 

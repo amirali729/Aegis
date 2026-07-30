@@ -5,13 +5,19 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import apiKeyRouter from './modules/apikey/routes/api-key.routes.js';
-import applicationRouter from './modules/application/routes/application.routes.js';
+import {
+  default as applicationApiKeyRouter,
+  default as applicationRouter,
+} from './modules/application/routes/application.routes.js';
 import auditRouter from './modules/audit/routes/audit.routes.js';
 import authRouter from './modules/auth/routes/auth.routes.js';
+import invitationPublicRouter from './modules/invitation/routes/invitation-public.routes.js';
+import invitationRouter from './modules/invitation/routes/invitation.routes.js';
+import membershipRouter from './modules/membership/routes/membership.routes.js';
+import organizationRouter from './modules/organization/routes/organization.routes.js';
 import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
 import sessionRouter from './modules/session/routes/session.routes.js';
-import tenantRouter from './modules/tenant/routes/tenant.routes.js';
 import healthRouter from './shared/http/health.router.js';
 import swaggerRouter from './shared/openapi/swagger.routes.js';
 
@@ -63,6 +69,7 @@ export function createApp() {
       credentials: true,
     }),
   );
+
   // Request logging - routed through the shared Logger so log format
   // stays consistent whether it comes from morgan or app code.
   //
@@ -95,10 +102,24 @@ export function createApp() {
   app.use('/health', healthRouter);
   app.use('/api/docs', swaggerRouter);
 
+  // Mounted first, deliberately: several routers below apply verifyjwt
+  // via router.use() with no path filter, which matches every path
+  // under their mount point - not just their own routes. If this were
+  // mounted after any of them, this public route would never be
+  // reached (see invitation-public.routes.ts for the full explanation).
+  // Mounted first, alongside invitationPublicRouter, for the same
+  // reason: application.routes.ts (mounted below) applies verifyjwt via
+  // router.use() with no path filter, which would otherwise intercept
+  // and reject this X-API-Key-only route before it's ever reached.
+  app.use('/api/v1', invitationPublicRouter);
+  app.use('/api/v1', applicationApiKeyRouter);
+
   app.use('/api/v1', authRouter);
   app.use('/api/v1', permissionRouter);
   app.use('/api/v1', roleRouter);
-  app.use('/api/v1', tenantRouter);
+  app.use('/api/v1', organizationRouter);
+  app.use('/api/v1', membershipRouter);
+  app.use('/api/v1', invitationRouter);
   app.use('/api/v1', applicationRouter);
   app.use('/api/v1', apiKeyRouter);
   app.use('/api/v1', sessionRouter);
@@ -109,73 +130,3 @@ export function createApp() {
 
   return app;
 }
-
-// import cookieParser from 'cookie-parser';
-
-// import express from 'express';
-
-// import morgan from 'morgan';
-
-// import apiKeyRouter from './modules/apikey/routes/api-key.routes.js';
-// import applicationRouter from './modules/application/routes/application.routes.js';
-// import applicationApiKeyRouter from './modules/application/routes/application-apikey.routes.js';
-// import auditRouter from './modules/audit/routes/audit.routes.js';
-// import authRouter from './modules/auth/routes/auth.routes.js';
-// import permissionRouter from './modules/permission/routes/permission.routes.js';
-// import roleRouter from './modules/role/routes/role.routes.js';
-// import sessionRouter from './modules/session/routes/session.routes.js';
-// import organizationRouter from './modules/organization/routes/organization.routes.js';
-// import membershipRouter from './modules/membership/routes/membership.routes.js';
-// import invitationRouter from './modules/invitation/routes/invitation.routes.js';
-// import invitationPublicRouter from './modules/invitation/routes/invitation-public.routes.js';
-// import healthRouter from './shared/http/health.router.js';
-// import swaggerRouter from './shared/openapi/swagger.routes.js';
-
-// import { errorHandler, notFoundHandler } from './shared/http/error-handler.js';
-
-// import { globalRateLimiter } from './shared/security/middleware/rate-limit.middleware.js';
-// import { Logger } from './shared/utils/logger.js';
-
-// export function createApp() {
-//   const app = express();
-
-//   app.use(express.json({ limit: '16kb' }));
-//   app.use(express.urlencoded({ extended: true, limit: '16kb' }));
-//   app.use(express.static('public'));
-//   app.use(cookieParser());
-
-//   // Backstop rate limit across the whole API; individual auth routes
-//   // layer stricter limits on top (see auth.router.ts).
-//   app.use(globalRateLimiter);
-
-//   app.use('/health', healthRouter);
-//   app.use('/api/docs', swaggerRouter);
-
-//   // Mounted first, deliberately: several routers below apply verifyjwt
-//   // via router.use() with no path filter, which matches every path
-//   // under their mount point - not just their own routes. If this were
-//   // mounted after any of them, this public route would never be
-//   // reached (see invitation-public.routes.ts for the full explanation).
-//   // Mounted first, alongside invitationPublicRouter, for the same
-//   // reason: application.routes.ts (mounted below) applies verifyjwt via
-//   // router.use() with no path filter, which would otherwise intercept
-//   // and reject this X-API-Key-only route before it's ever reached.
-//   app.use('/api/v1', invitationPublicRouter);
-//   app.use('/api/v1', applicationApiKeyRouter);
-
-//   app.use('/api/v1', authRouter);
-//   app.use('/api/v1', permissionRouter);
-//   app.use('/api/v1', roleRouter);
-//   app.use('/api/v1', organizationRouter);
-//   app.use('/api/v1', membershipRouter);
-//   app.use('/api/v1', invitationRouter);
-//   app.use('/api/v1', applicationRouter);
-//   app.use('/api/v1', apiKeyRouter);
-//   app.use('/api/v1', sessionRouter);
-//   app.use('/api/v1', auditRouter);
-
-//   app.use(notFoundHandler);
-//   app.use(errorHandler);
-
-//   return app;
-// }

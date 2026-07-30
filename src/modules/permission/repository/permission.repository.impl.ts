@@ -10,9 +10,9 @@ import type {
 } from './interface/permission.repository.interface.js';
 
 export class PermissionRepository implements IPermissionRepository {
-  async findAll(): Promise<DataResult<IPermission[]>> {
+  async findAll(tenantId: string): Promise<DataResult<IPermission[]>> {
     try {
-      const permissions = await Permission.find().sort({
+      const permissions = await Permission.findById(tenantId).sort({
         key: 1,
       });
       return ok(permissions);
@@ -30,9 +30,9 @@ export class PermissionRepository implements IPermissionRepository {
     }
   }
 
-  async findByKey(key: string): Promise<DataResult<IPermission | null>> {
+  async findByKey(key: string, tenantId?: string): Promise<DataResult<IPermission | null>> {
     try {
-      const permission = await Permission.findOne({ key });
+      const permission = await Permission.findOne({ key, tenantId });
       return ok(permission);
     } catch {
       return err(new InfrastructureError());
