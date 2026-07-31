@@ -49,6 +49,6 @@ export const DEFAULT_ROLES: Array<{
     name: 'User',
     description: 'Default role for newly registered accounts. No elevated permissions.',
     isSystem: true,
-    permissionKeys: [],
+    permissionKeys: ['organization:create', 'organization:view'],
   },
 ];

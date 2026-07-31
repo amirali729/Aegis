@@ -34,6 +34,7 @@ const AuthApiEndpoint = {
   RESEND_VERIFICATION: '/auth/resendVerification',
   FORGOT_PASSWORD: '/auth/forgotPassword',
   RESET_PASSWORD: '/auth/resetPassword',
+  ME: '/auth/me',
 };
 export const {
   SIGNUP,
@@ -46,4 +47,5 @@ export const {
   RESEND_VERIFICATION,
   FORGOT_PASSWORD,
   RESET_PASSWORD,
+  ME,
 } = AuthApiEndpoint;

@@ -10,9 +10,9 @@ import type {
 } from './interface/permission.repository.interface.js';
 
 export class PermissionRepository implements IPermissionRepository {
-  async findAll(tenantId: string): Promise<DataResult<IPermission[]>> {
+  async findAll(tenantId: string | undefined): Promise<DataResult<IPermission[]>> {
     try {
-      const permissions = await Permission.findById(tenantId).sort({
+      const permissions = await Permission.find({ tenantId }).sort({
         key: 1,
       });
       return ok(permissions);

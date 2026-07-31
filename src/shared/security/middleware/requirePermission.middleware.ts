@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { getUserPermissionKeys } from '../authorization/permission-evaluator.js';
 
 /**
@@ -13,7 +13,7 @@ export function requirePermission(...requiredKeys: string[]) {
       return res.status(401).json({ message: 'Unauthorized access' });
     }
 
-    const userPermissions = await getUserPermissionKeys(req.user._id.toString());
+    const userPermissions = await getUserPermissionKeys(req.user._id.toString(), req.tenantId);
 
     const hasAll = requiredKeys.every((key) => userPermissions.has(key));
 
@@ -37,7 +37,7 @@ export function requireAnyPermission(...allowedKeys: string[]) {
       return res.status(401).json({ message: 'Unauthorized access' });
     }
 
-    const userPermissions = await getUserPermissionKeys(req.user._id.toString());
+    const userPermissions = await getUserPermissionKeys(req.user._id.toString(), req.tenantId);
 
     const hasAny = allowedKeys.some((key) => userPermissions.has(key));
 

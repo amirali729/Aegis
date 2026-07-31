@@ -5,10 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import apiKeyRouter from './modules/apikey/routes/api-key.routes.js';
-import {
-  default as applicationApiKeyRouter,
-  default as applicationRouter,
-} from './modules/application/routes/application.routes.js';
+import applicationRouter from './modules/application/routes/application.routes.js';
 import auditRouter from './modules/audit/routes/audit.routes.js';
 import authRouter from './modules/auth/routes/auth.routes.js';
 import invitationPublicRouter from './modules/invitation/routes/invitation-public.routes.js';
@@ -107,12 +104,7 @@ export function createApp() {
   // under their mount point - not just their own routes. If this were
   // mounted after any of them, this public route would never be
   // reached (see invitation-public.routes.ts for the full explanation).
-  // Mounted first, alongside invitationPublicRouter, for the same
-  // reason: application.routes.ts (mounted below) applies verifyjwt via
-  // router.use() with no path filter, which would otherwise intercept
-  // and reject this X-API-Key-only route before it's ever reached.
   app.use('/api/v1', invitationPublicRouter);
-  app.use('/api/v1', applicationApiKeyRouter);
 
   app.use('/api/v1', authRouter);
   app.use('/api/v1', permissionRouter);

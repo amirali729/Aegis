@@ -7,11 +7,11 @@ import type { IPermission } from '../../model/permission.model.js';
 export type DataResult<T> = Result<T, InfrastructureError>;
 
 export interface IPermissionRepository {
-  findAll(tenantId: string): Promise<DataResult<IPermission[]>>;
+  findAll(tenantId: string | undefined): Promise<DataResult<IPermission[]>>;
 
   findById(id: string): Promise<DataResult<IPermission | null>>;
 
-  findByKey(key: string, tenantId: string): Promise<DataResult<IPermission | null>>;
+  findByKey(key: string, tenantId: string | undefined): Promise<DataResult<IPermission | null>>;
 
   findByIds(ids: string[]): Promise<DataResult<IPermission[]>>;
 

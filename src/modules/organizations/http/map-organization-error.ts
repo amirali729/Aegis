@@ -12,6 +12,6 @@ const errorMap: Record<OrganizationError['kind'], (error: OrganizationError) => 
     infrastructure: (error) => new BaseErrorResponse(error.message, 500),
   };
 
-export function mapTenantError(error: OrganizationError): BaseErrorResponse {
+export function mapOrganizationError(error: OrganizationError): BaseErrorResponse {
   return errorMap[error.kind](error);
 }

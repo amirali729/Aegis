@@ -12,6 +12,8 @@ import { AuthService } from '../service/auth.service.impl.js';
 import { handle } from '../../../shared/http/handle.js';
 import { HttpStatus } from '../../../shared/http/http-status.js';
 import { validate } from '../../../shared/http/validate.js';
+import { BaseResponse } from '../../../shared/response/base.response.js';
+import { getUserPermissionKeys } from '../../../shared/security/authorization/permission-evaluator.js';
 import {
   authRateLimiter,
   sensitiveActionRateLimiter,
@@ -19,6 +21,7 @@ import {
 import { resolveTenant } from '../../../shared/security/middleware/resolveTenant.middleware.js';
 import { verifyjwt } from '../../../shared/security/middleware/verifyJwt.middleware.js';
 import { mapAuthError } from '../http/map-auth-error.js';
+import { toUserResponse } from '../service/user-mapper.js';
 
 import {
   changePasswordSchema,
@@ -35,6 +38,7 @@ import {
   LOGIN,
   LOGOUT,
   LOGOUT_ALL,
+  ME,
   REFRESH,
   RESEND_VERIFICATION,
   RESET_PASSWORD,
@@ -128,5 +132,18 @@ router.post(
   validate({ body: changePasswordSchema }),
   handle(authController.changePassword.bind(authController), mapAuthError),
 );
+
+// Lets the frontend re-fetch identity + effective permissions on app
+// load (or after creating/joining an organization) without logging in
+// again - resolveTenant lets this reflect a specific org's permissions
+// when the client sends X-Tenant-ID, same as every other org-scoped
+// route.
+router.get(ME, verifyjwt, resolveTenant, async (req, res) => {
+  const permissions = await getUserPermissionKeys(req.user._id.toString(), req.tenantId);
+  return new BaseResponse({
+    user: toUserResponse(req.user),
+    permissions: Array.from(permissions),
+  }).send(res);
+});
 
 export default router;

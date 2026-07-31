@@ -9,11 +9,20 @@ import type {
 export interface IOrganizationService {
   list(): Promise<OrganizationListResult>;
 
-  getById(id: string): Promise<OrganizationResult>;
+  getById(id: string, callerTenantId: string | undefined): Promise<OrganizationResult>;
 
-  create(dto: CreateOrganizationDto): Promise<OrganizationResult>;
+  create(dto: CreateOrganizationDto, actorId?: string): Promise<OrganizationResult>;
 
-  update(id: string, dto: UpdateOrganizationDto): Promise<OrganizationResult>;
+  update(
+    id: string,
+    dto: UpdateOrganizationDto,
+    callerTenantId: string | undefined,
+    actorId?: string,
+  ): Promise<OrganizationResult>;
 
-  delete(id: string): Promise<DeleteOrganizationResult>;
+  delete(
+    id: string,
+    callerTenantId: string | undefined,
+    actorId?: string,
+  ): Promise<DeleteOrganizationResult>;
 }

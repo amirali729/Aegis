@@ -31,6 +31,7 @@ import type { ResetPasswordDto } from '../dto/reset-password.dto.js';
 import type { SignUpDto } from '../dto/signup.dto.js';
 import type { VerifyEmailDto } from '../dto/verify-email.dto.js';
 
+import { getUserPermissionKeys } from '../../../shared/security/authorization/permission-evaluator.js';
 import { AccountLockedError } from '../errors/account-locked.error.js';
 import { EmailAlreadyExistsError } from '../errors/email-already-exists.error.js';
 import { InvalidCredentialsError } from '../errors/invalid-credentials.error.js';
@@ -229,7 +230,16 @@ export class AuthService implements IAuthService {
       ),
     );
 
-    return ok(new LoginResponse(toUserResponse(user), accessToken, session.value.rawRefreshToken));
+    const permissionKeys = await getUserPermissionKeys(user._id.toString(), tenantId);
+
+    return ok(
+      new LoginResponse(
+        toUserResponse(user),
+        accessToken,
+        session.value.rawRefreshToken,
+        Array.from(permissionKeys),
+      ),
+    );
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<ChangePasswordResult> {

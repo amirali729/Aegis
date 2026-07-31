@@ -17,19 +17,24 @@ export class OrganizationController implements IOrganizationController {
   }
 
   async getById(req: Request, _res: Response, _next: NextFunction): Promise<OrganizationResult> {
-    return this.service.getById(req.params.id as string);
+    return this.service.getById(req.params.id as string, req.tenantId);
   }
 
   async create(req: Request, _res: Response, _next: NextFunction): Promise<OrganizationResult> {
     const dto = new CreateOrganizationDto(req.body.name, req.body.slug, req.body.plan ?? 'free');
 
-    return this.service.create(dto);
+    return this.service.create(dto, req.user?._id?.toString());
   }
 
   async update(req: Request, _res: Response, _next: NextFunction): Promise<OrganizationResult> {
     const dto = new UpdateOrganizationDto(req.body.name, req.body.status, req.body.plan);
 
-    return this.service.update(req.params.id as string, dto);
+    return this.service.update(
+      req.params.id as string,
+      dto,
+      req.tenantId,
+      req.user?._id?.toString(),
+    );
   }
 
   async delete(
@@ -37,6 +42,6 @@ export class OrganizationController implements IOrganizationController {
     _res: Response,
     _next: NextFunction,
   ): Promise<DeleteOrganizationResult> {
-    return this.service.delete(req.params.id as string);
+    return this.service.delete(req.params.id as string, req.tenantId, req.user?._id?.toString());
   }
 }
