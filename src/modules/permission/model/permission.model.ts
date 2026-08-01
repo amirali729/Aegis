@@ -18,7 +18,12 @@ const permissionSchema: Schema = new mongoose.Schema(
   {
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Organization',
+      // Mongoose model is registered as "Tenant" (see
+      // organizations/model/organization.model.ts) even though the
+      // module/type layer calls it Organization - ref must match the
+      // registered model name or populate('tenantId') throws
+      // MissingSchemaError.
+      ref: 'Tenant',
       index: true,
     },
     key: {

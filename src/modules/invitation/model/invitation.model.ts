@@ -19,7 +19,12 @@ const invitationSchema: Schema = new mongoose.Schema(
   {
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Organization',
+      // Mongoose model is registered as "Tenant" (see
+      // organizations/model/organization.model.ts) even though the
+      // module/type layer calls it Organization - ref must match the
+      // registered model name or populate('organizationId') throws
+      // MissingSchemaError.
+      ref: 'Tenant',
       required: true,
       index: true,
     },

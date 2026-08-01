@@ -4,6 +4,8 @@ import type { SignOptions } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
 import type { Document } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
+import type { PlatformRole } from '../../../shared/security/authorization/platform-roles.js';
+import { PLATFORM_ROLES } from '../../../shared/security/authorization/platform-roles.js';
 import { hashToken } from '../../../shared/security/hashing/token-hash.js';
 
 export interface IUser extends Document {
@@ -14,12 +16,19 @@ export interface IUser extends Document {
   password: string;
   fullName?: string;
   /**
-   * References to Role documents (modules/role). Kept as a plain
-   * ObjectId array (not populated by default) so authorization checks
-   * can decide when to look up fresh permissions vs. rely on a cache.
-   * See shared/security/authorization for permission evaluation.
+   * Fixed platform-level role (see shared/security/authorization/
+   * platform-roles.ts for the capability map). This is intentionally
+   * NOT a reference to a Role document - the platform layer is a small,
+   * fixed set defined by the architecture (Owner/Admin/Support/User),
+   * unlike organization roles which are custom, per-org Role documents.
+   * Everyone is 'user' by default; 'owner' is never granted through
+   * signup (see bootstrap/assign-admin.ts).
+   *
+   * Organization-level roles are NOT stored here - see
+   * modules/membership/model/membership.model.ts (roleIds). Roles never
+   * attach directly to a User; Membership is the permission boundary.
    */
-  roles: mongoose.Types.ObjectId[];
+  platformRole: PlatformRole;
   isVerified: boolean;
   emailVerificationToken?: string;
   emailVerificationExpiry?: Date;
@@ -76,7 +85,12 @@ const userSchema: Schema = new mongoose.Schema(
     // points at the Organization collection - Organization IS the tenant.
     tenantId: {
       type: Schema.Types.ObjectId,
-      ref: 'Organization',
+      // Mongoose model is registered as "Tenant" (see
+      // organizations/model/organization.model.ts) even though the
+      // module/type layer calls it Organization - ref must match the
+      // registered model name or populate('tenantId') throws
+      // MissingSchemaError.
+      ref: 'Tenant',
       index: true,
     },
     username: {
@@ -108,14 +122,11 @@ const userSchema: Schema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    roles: {
-      type: [
-        {
-          type: Schema.Types.ObjectId,
-          ref: 'Role',
-        },
-      ],
-      default: [],
+    platformRole: {
+      type: String,
+      enum: PLATFORM_ROLES,
+      default: 'user',
+      index: true,
     },
     isVerified: {
       type: Boolean,

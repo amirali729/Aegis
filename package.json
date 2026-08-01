@@ -16,6 +16,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "migrate:roles-to-membership": "tsx src/bootstrap/migrate-roles-to-membership.ts",
+    "verify:refs": "tsx src/bootstrap/verify-model-refs.ts",
     "seed:rbac": "tsx src/bootstrap/seed-rbac.ts",
     "seed:admin": "tsx src/bootstrap/assign-admin.ts",
     "lint": "eslint .",
