@@ -1,6 +1,4 @@
-import type { FilterQuery } from 'mongoose';
 import { User } from '../../../modules/auth/model/user.model.js';
-import type { IMembership } from '../../../modules/membership/model/membership.model.js';
 import { Membership } from '../../../modules/membership/model/membership.model.js';
 import type { IPermission } from '../../../modules/permission/model/permission.model.js';
 import type { IRole } from '../../../modules/role/model/role.model.js';
@@ -58,7 +56,10 @@ export async function getUserPermissionKeys(
     }
   }
 
-  const membershipQuery: FilterQuery<IMembership> = { userId, status: 'active' };
+  const membershipQuery: { userId: string; status: 'active'; organizationId?: string } = {
+    userId,
+    status: 'active',
+  };
   if (organizationId) {
     membershipQuery.organizationId = organizationId;
   }

@@ -1,5 +1,3 @@
-import mongoose from 'mongoose';
-
 import { ValidationError } from '../../../shared/errors/validation.error.js';
 import { err, ok } from '../../../shared/result/result.js';
 import { hashToken } from '../../../shared/security/hashing/token-hash.js';
@@ -12,7 +10,6 @@ import {
 
 import type { IAuthRepository } from '../repository/interface/auth.repository.interface.js';
 import type { IAuthService } from './interface/auth.service.interface.js';
-import type { IDefaultRoleProvider } from './interface/default-role-provider.interface.js';
 import { toUserResponse } from './user-mapper.js';
 
 import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
@@ -72,7 +69,6 @@ export class AuthService implements IAuthService {
     private readonly mailer: IMailer,
     private readonly clientUrl: string,
     private readonly sessionService: ISessionService,
-    private readonly defaultRoleProvider?: IDefaultRoleProvider,
     private readonly auditLogger?: IAuditLogger,
   ) {}
 
@@ -97,12 +93,6 @@ export class AuthService implements IAuthService {
     }
 
     const user = created.value;
-
-    const defaultRoleId = await this.defaultRoleProvider?.getDefaultRoleId();
-
-    if (defaultRoleId) {
-      user.roles.push(new mongoose.Types.ObjectId(defaultRoleId));
-    }
 
     const rawVerificationToken = user.createEmailVerificationToken();
 

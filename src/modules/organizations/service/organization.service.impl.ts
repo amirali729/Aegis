@@ -13,7 +13,6 @@ import type {
 import type { IOrganizationService } from './interface/organization.service.interface.js';
 import { toOrganizationResponse } from './organization-mapper.js';
 
-import type { IAuthRepository } from '../../auth/repository/interface/auth.repository.interface.js';
 import type { IMembershipRepository } from '../../membership/repository/interface/membership.repository.interface.js';
 import type { IPermissionRepository } from '../../permission/repository/interface/permission.repository.interface.js';
 import { CreateRoleDto } from '../../role/dto/create-role.dto.js';
@@ -39,7 +38,6 @@ export class OrganizationService implements IOrganizationService {
     private readonly roleRepository: IRoleRepository,
     private readonly permissionRepository: IPermissionRepository,
     private readonly membershipRepository: IMembershipRepository,
-    private readonly authRepository: IAuthRepository,
     private readonly auditLogger?: IAuditLogger,
   ) {}
 
@@ -139,6 +137,26 @@ export class OrganizationService implements IOrganizationService {
    * created successfully - an operator can always fix membership by
    * hand afterward, whereas rolling back the org would be worse.
    */
+  /**
+   * Auto-provisions the creator as the new Organization's owner: an
+   * org-scoped "Owner" role holding every platform permission key
+   * (referencing the existing GLOBAL Permission catalog - no need to
+   * duplicate Permission documents per org, only the Role granting them
+   * is org-scoped), an active Membership, and the role attached to that
+   * Membership (roles attach to Membership, never directly to a User -
+   * see modules/membership/model/membership.model.ts). Best-effort:
+   * failures here are logged but don't fail organization creation
+   * itself, since the org was already created successfully - an
+   * operator can always fix membership by hand afterward, whereas
+   * rolling back the org would be worse.
+   *
+   * Runs regardless of MULTI_TENANT: permission-evaluator.ts resolves
+   * org-level permissions from the caller's active Memberships even
+   * when no organizationId is supplied (single-tenant deployments never
+   * populate req.tenantId), so a single-tenant org's Owner role is not
+   * dead weight - it is exactly what makes the creator able to manage
+   * the org they just created.
+   */
   private async provisionOwner(organizationId: string, userId: string): Promise<void> {
     try {
       const membershipResult = await this.membershipRepository.create(
@@ -148,16 +166,6 @@ export class OrganizationService implements IOrganizationService {
       );
       if (!membershipResult.ok) {
         console.error('provisionOwner: failed to create membership', membershipResult.error);
-      }
-
-      // An org-scoped role only ever applies when MULTI_TENANT=true -
-      // resolveTenant.middleware.ts leaves req.tenantId permanently
-      // undefined otherwise, and permission-evaluator.ts only counts a
-      // role toward a request when role.tenantId matches req.tenantId
-      // (or the role is global). Creating one anyway in single-tenant
-      // mode would be dead weight that can never actually grant
-      // anything - membership above is still recorded either way.
-      if (process.env.MULTI_TENANT !== 'true') {
         return;
       }
 
@@ -180,14 +188,15 @@ export class OrganizationService implements IOrganizationService {
         return;
       }
 
-      const userResult = await this.authRepository.findById(userId);
-      if (!userResult.ok || !userResult.value) {
-        console.error('provisionOwner: failed to load creating user');
-        return;
-      }
+      const attached = await this.membershipRepository.addRole(
+        organizationId,
+        userId,
+        role.value._id.toString(),
+      );
 
-      userResult.value.roles.push(role.value._id);
-      await this.authRepository.save(userResult.value, { validateBeforeSave: false });
+      if (!attached.ok || !attached.value) {
+        console.error('provisionOwner: failed to attach Owner role to membership');
+      }
     } catch (error) {
       console.error('provisionOwner: unexpected error', error);
     }
