@@ -1,5 +1,6 @@
 import { err, ok } from '../../../shared/result/result.js';
-import { UserNotFoundError } from '../../auth/errors/user-not-found.error.js';
+import { MemberNotFoundError } from '../../membership/errors/member-not-found.error.js';
+import { OrganizationNotFoundError } from '../../organizations/errors/organization-not-found.error.js';
 import { PermissionNotFoundError } from '../../permission/errors/permission-not-found.error.js';
 import type { IPermissionRepository } from '../../permission/repository/interface/permission.repository.interface.js';
 import type { AssignRoleDto } from '../dto/assign-role.dto.js';
@@ -9,8 +10,8 @@ import type { UpdateRoleDto } from '../dto/update-role.dto.js';
 import { RoleAlreadyExistsError } from '../errors/role-already-exists.error.js';
 import { RoleNotFoundError } from '../errors/role-not-found.error.js';
 import { SystemRoleImmutableError } from '../errors/system-role-immutable.error.js';
+import type { IMembershipRoleRepository } from '../repository/interface/membership-role.repository.interface.js';
 import type { IRoleRepository } from '../repository/interface/role.repository.interface.js';
-import type { IUserRoleRepository } from '../repository/interface/user-role.repository.interface.js';
 import { AssignRoleResponse } from '../responses/assign-role.response.js';
 import type {
   AssignRoleResult,
@@ -29,7 +30,7 @@ export class RoleService implements IRoleService {
   constructor(
     private readonly roleRepository: IRoleRepository,
     private readonly permissionRepository: IPermissionRepository,
-    private readonly userRoleRepository: IUserRoleRepository,
+    private readonly membershipRoleRepository: IMembershipRoleRepository,
     private readonly auditLogger?: IAuditLogger,
   ) {}
 
@@ -233,7 +234,15 @@ export class RoleService implements IRoleService {
     return ok({ message: 'Role deleted successfully.' });
   }
 
-  async assignToUser(dto: AssignRoleDto, actorId?: string): Promise<AssignRoleResult> {
+  async assignToUser(
+    dto: AssignRoleDto,
+    callerTenantId: string | undefined,
+    actorId?: string,
+  ): Promise<AssignRoleResult> {
+    if (!this.belongsToCaller(dto.organizationId, callerTenantId)) {
+      return err(new OrganizationNotFoundError());
+    }
+
     const role = await this.roleRepository.findById(dto.roleId);
 
     if (!role.ok) {
@@ -244,14 +253,18 @@ export class RoleService implements IRoleService {
       return err(new RoleNotFoundError());
     }
 
-    const updated = await this.userRoleRepository.addRole(dto.userId, dto.roleId);
+    const updated = await this.membershipRoleRepository.addRole(
+      dto.organizationId,
+      dto.userId,
+      dto.roleId,
+    );
 
     if (!updated.ok) {
       return err(updated.error);
     }
 
     if (!updated.value) {
-      return err(new UserNotFoundError());
+      return err(new MemberNotFoundError());
     }
 
     void this.auditLogger?.record(
@@ -264,22 +277,35 @@ export class RoleService implements IRoleService {
         dto.userId,
         undefined,
         undefined,
-        { roleId: dto.roleId },
+        { roleId: dto.roleId, organizationId: dto.organizationId },
+        dto.organizationId,
       ),
     );
 
     return ok(new AssignRoleResponse(dto.userId, updated.value));
   }
 
-  async removeFromUser(dto: AssignRoleDto, actorId?: string): Promise<AssignRoleResult> {
-    const updated = await this.userRoleRepository.removeRole(dto.userId, dto.roleId);
+  async removeFromUser(
+    dto: AssignRoleDto,
+    callerTenantId: string | undefined,
+    actorId?: string,
+  ): Promise<AssignRoleResult> {
+    if (!this.belongsToCaller(dto.organizationId, callerTenantId)) {
+      return err(new OrganizationNotFoundError());
+    }
+
+    const updated = await this.membershipRoleRepository.removeRole(
+      dto.organizationId,
+      dto.userId,
+      dto.roleId,
+    );
 
     if (!updated.ok) {
       return err(updated.error);
     }
 
     if (!updated.value) {
-      return err(new UserNotFoundError());
+      return err(new MemberNotFoundError());
     }
 
     void this.auditLogger?.record(
@@ -292,11 +318,26 @@ export class RoleService implements IRoleService {
         dto.userId,
         undefined,
         undefined,
-        { roleId: dto.roleId },
+        { roleId: dto.roleId, organizationId: dto.organizationId },
+        dto.organizationId,
       ),
     );
 
     return ok(new AssignRoleResponse(dto.userId, updated.value, 'Role removed successfully.'));
+  }
+
+  /**
+   * True if a caller resolved to `callerTenantId` may act on
+   * organization `organizationId`. Mirrors the same fetch-then-compare
+   * pattern used for Membership/Application ownership - undefined
+   * callerTenantId (single-tenant mode, MULTI_TENANT=false) always
+   * passes. Without this, a caller holding role:update permission
+   * scoped to one org could target a DIFFERENT org's :orgId in the
+   * route and modify its memberships, since role:update is a
+   * permission KEY check, not itself an org-ownership check.
+   */
+  private belongsToCaller(organizationId: string, callerTenantId: string | undefined): boolean {
+    return callerTenantId === undefined || callerTenantId === organizationId;
   }
 
   private async validatePermissionIds(permissionIds: string[]): Promise<RoleError | undefined> {

@@ -22,7 +22,15 @@ export interface IRoleService {
 
   delete(id: string, actorId?: string): Promise<DeleteRoleResult>;
 
-  assignToUser(dto: AssignRoleDto, actorId?: string): Promise<AssignRoleResult>;
+  assignToUser(
+    dto: AssignRoleDto,
+    callerTenantId: string | undefined,
+    actorId?: string,
+  ): Promise<AssignRoleResult>;
 
-  removeFromUser(dto: AssignRoleDto, actorId?: string): Promise<AssignRoleResult>;
+  removeFromUser(
+    dto: AssignRoleDto,
+    callerTenantId: string | undefined,
+    actorId?: string,
+  ): Promise<AssignRoleResult>;
 }

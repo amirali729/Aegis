@@ -10,7 +10,9 @@ const errorMap: Record<RoleError['kind'], (error: RoleError) => BaseErrorRespons
 
   permission_not_found: (error) => new BaseErrorResponse(error.message, 400),
 
-  user_not_found: (error) => new BaseErrorResponse(error.message, 404),
+  member_not_found: (error) => new BaseErrorResponse(error.message, 404),
+
+  organization_not_found: (error) => new BaseErrorResponse(error.message, 404),
 
   validation_error: (error) => new BaseErrorResponse(error.message, 400),
 

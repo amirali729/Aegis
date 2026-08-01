@@ -25,10 +25,12 @@ export const assignRoleBodySchema = z.object({
 });
 
 export const assignRoleParamsSchema = z.object({
+  orgId: objectIdSchema,
   userId: objectIdSchema,
 });
 
 export const removeRoleParamsSchema = z.object({
+  orgId: objectIdSchema,
   userId: objectIdSchema,
   roleId: objectIdSchema,
 });

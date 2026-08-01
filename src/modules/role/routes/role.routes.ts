@@ -4,8 +4,8 @@ import { auditService } from '../../audit/routes/audit.routes.js';
 import { PermissionRepository } from '../../permission/repository/permission.repository.impl.js';
 import { RoleController } from '../controller/role.controller.impl.js';
 import { mapRoleError } from '../http/map-role-error.js';
+import { MembershipRoleRepository } from '../repository/membership-role.repository.impl.js';
 import { RoleRepository } from '../repository/role.repository.impl.js';
-import { UserRoleRepository } from '../repository/user-role.repository.impl.js';
 import { RoleService } from '../service/role.service.impl.js';
 
 import { handle } from '../../../shared/http/handle.js';
@@ -39,12 +39,12 @@ const router = Router();
 
 const roleRepository = new RoleRepository();
 const permissionRepository = new PermissionRepository();
-const userRoleRepository = new UserRoleRepository();
+const membershipRoleRepository = new MembershipRoleRepository();
 
 const roleService = new RoleService(
   roleRepository,
   permissionRepository,
-  userRoleRepository,
+  membershipRoleRepository,
   auditService,
 );
 const roleController = new RoleController(roleService);

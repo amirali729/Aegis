@@ -23,4 +23,25 @@ export interface IMembershipRepository {
   ): Promise<DataResult<IMembership | null>>;
 
   delete(organizationId: string, userId: string): Promise<DataResult<boolean>>;
+
+  /**
+   * Grants an organization-scoped Role to this membership. Idempotent -
+   * adding a role the membership already holds is a no-op ($addToSet).
+   * Returns null if no membership exists for (organizationId, userId).
+   */
+  addRole(
+    organizationId: string,
+    userId: string,
+    roleId: string,
+  ): Promise<DataResult<IMembership | null>>;
+
+  /**
+   * Revokes an organization-scoped Role from this membership. Returns
+   * null if no membership exists for (organizationId, userId).
+   */
+  removeRole(
+    organizationId: string,
+    userId: string,
+    roleId: string,
+  ): Promise<DataResult<IMembership | null>>;
 }
