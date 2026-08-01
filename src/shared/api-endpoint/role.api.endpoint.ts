@@ -5,8 +5,8 @@ const RoleApiEndpoint = {
   UPDATE: '/roles/:id',
   SET_PERMISSIONS: '/roles/:id/permissions',
   DELETE: '/roles/:id',
-  ASSIGN_TO_USER: '/users/:userId/roles',
-  REMOVE_FROM_USER: '/users/:userId/roles/:roleId',
+  ASSIGN_TO_USER: '/organizations/:orgId/users/:userId/roles',
+  REMOVE_FROM_USER: '/organizations/:orgId/users/:userId/roles/:roleId',
 };
 
 export const {

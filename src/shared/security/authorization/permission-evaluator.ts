@@ -1,61 +1,83 @@
 import { User } from '../../../modules/auth/model/user.model.js';
+import { Membership } from '../../../modules/membership/model/membership.model.js';
 import type { IPermission } from '../../../modules/permission/model/permission.model.js';
 import type { IRole } from '../../../modules/role/model/role.model.js';
+import { ALL_PERMISSIONS, PLATFORM_ROLE_PERMISSIONS } from './platform-roles.js';
 
 /**
- * Loads the effective set of permission keys for a user by walking
- * User -> roles -> permissions and taking the union (see Authorization
- * Architecture doc, section 13: "the final permission set is the union
- * of all permissions").
+ * Loads the effective set of permission keys for a user, unioning two
+ * independent sources (see Authorization Architecture doc, section 5):
  *
- * `organizationId`, when provided, scopes this to roles that actually
- * belong to that organization (role.tenantId === organizationId) plus
- * any GLOBAL roles the user holds (role.tenantId undefined - a
- * platform-level Admin, not scoped to any single org). Without this
- * scoping, a permission granted via a role in one small org the caller
- * legitimately owns would count as held everywhere, for every org - a
- * real privilege-escalation path once resolveTenant lets a client
- * declare which org it's acting as via a header. See
- * resolveTenant.middleware.ts for the matching fix (verifying the
- * caller actually belongs to that org before trusting the header at
- * all).
+ *  1. Platform-level permissions, from the user's fixed
+ *     User.platformRole (see platform-roles.ts). Not scoped to any
+ *     organization - a Platform Admin can view every organization.
+ *
+ *  2. Organization-level permissions, resolved by walking
+ *     User -> Membership -> Role -> Permission for the organization
+ *     this request is acting as (`organizationId`). Membership is the
+ *     ONLY place org-level roles attach - there is no longer a
+ *     User.roles field. A membership can hold multiple roles at once;
+ *     the effective set is the union of all of them.
+ *
+ * When `organizationId` is omitted (single-tenant deployments, where
+ * resolveTenant.middleware.ts never populates req.tenantId), org-level
+ * permissions are resolved from ALL of the user's active memberships
+ * instead of just one - in practice there is exactly one in a
+ * single-tenant deployment, but this also means a user who happens to
+ * belong to more than one org still gets a sane union rather than
+ * silently seeing zero org permissions.
  *
  * This queries fresh on every call rather than trusting a JWT claim, so
  * role/permission changes take effect immediately. A future iteration
- * can add a Redis-backed cache here (see docs, section 18) without
- * changing the requirePermission middleware's contract.
+ * can add a Redis-backed cache here without changing the
+ * requirePermission middleware's contract.
  */
 export async function getUserPermissionKeys(
   userId: string,
   organizationId?: string,
 ): Promise<Set<string>> {
-  const user = await User.findById(userId)
-    .select('roles')
-    .populate<{ roles: IRole[] }>({
-      path: 'roles',
-      populate: { path: 'permissions' },
-    });
-
-  if (!user) {
-    return new Set();
-  }
-
   const keys = new Set<string>();
 
-  for (const role of user.roles) {
-    const roleTenantId = role.tenantId?.toString();
+  const user = await User.findById(userId).select('platformRole');
+  if (!user) {
+    return keys;
+  }
 
-    // A role scoped to a DIFFERENT org than the one this request is
-    // acting as doesn't count - only global (platform) roles or roles
-    // scoped to the current org contribute permissions here.
-    const roleApplies = roleTenantId === undefined || roleTenantId === organizationId;
+  const platformPermissions = PLATFORM_ROLE_PERMISSIONS[user.platformRole];
 
-    if (!roleApplies) continue;
+  if (platformPermissions === ALL_PERMISSIONS) {
+    // Platform Owner - grants everything, including permissions added
+    // in the future. Callers (requirePermission/requireAnyPermission)
+    // must check for this sentinel explicitly.
+    keys.add(ALL_PERMISSIONS);
+  } else {
+    for (const key of platformPermissions) {
+      keys.add(key);
+    }
+  }
 
-    for (const permission of role.permissions) {
-      const populated = permission as unknown as IPermission;
-      if (populated?.key) {
-        keys.add(populated.key);
+  const membershipQuery: { userId: string; status: 'active'; organizationId?: string } = {
+    userId,
+    status: 'active',
+  };
+  if (organizationId) {
+    membershipQuery.organizationId = organizationId;
+  }
+
+  const memberships = await Membership.find(membershipQuery).populate<{
+    roleIds: IRole[];
+  }>({
+    path: 'roleIds',
+    populate: { path: 'permissions' },
+  });
+
+  for (const membership of memberships) {
+    for (const role of membership.roleIds) {
+      for (const permission of role.permissions) {
+        const populated = permission as unknown as IPermission;
+        if (populated?.key) {
+          keys.add(populated.key);
+        }
       }
     }
   }

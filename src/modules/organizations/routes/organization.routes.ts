@@ -1,7 +1,6 @@
 import { Router } from 'express';
 
 import { auditService } from '../../audit/routes/audit.routes.js';
-import { AuthRepository } from '../../auth/repository/auth.repository.impl.js';
 import { MembershipRepository } from '../../membership/repository/membership.repository.impl.js';
 import { PermissionRepository } from '../../permission/repository/permission.repository.impl.js';
 import { RoleRepository } from '../../role/repository/role.repository.impl.js';
@@ -37,14 +36,12 @@ const organizationRepository = new OrganizationRepository();
 const roleRepository = new RoleRepository();
 const permissionRepository = new PermissionRepository();
 const membershipRepository = new MembershipRepository();
-const authRepository = new AuthRepository();
 
 const organizationService = new OrganizationService(
   organizationRepository,
   roleRepository,
   permissionRepository,
   membershipRepository,
-  authRepository,
   auditService,
 );
 const organizationController = new OrganizationController(organizationService);

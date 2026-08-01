@@ -2,7 +2,6 @@ import type { NextFunction, Request, Response } from 'express';
 
 import { User } from '../../../modules/auth/model/user.model.js';
 import { Membership } from '../../../modules/membership/model/membership.model.js';
-import type { IRole } from '../../../modules/role/model/role.model.js';
 
 /**
  * Self-hosted deployments typically run a single tenant and don't need
@@ -15,17 +14,19 @@ function isMultiTenantEnabled(): boolean {
 }
 
 /**
- * True if the user holds at least one GLOBAL role (role.tenantId is
- * undefined) - a platform-level operator (e.g. set up via
- * bootstrap/assign-admin.ts), trusted to act on any organization rather
- * than only ones they're an explicit Member of.
+ * True if the user holds an elevated platform role (owner/admin/support
+ * - see shared/security/authorization/platform-roles.ts), set up via
+ * bootstrap/assign-admin.ts or promoted by a Platform Owner. Trusted to
+ * act on any organization rather than only ones they're an explicit
+ * Member of - matches the architecture doc's platform-role
+ * capabilities (Platform Admin/Support can both view any organization).
  */
-async function userHasGlobalRole(userId: string): Promise<boolean> {
-  const user = await User.findById(userId).select('roles').populate<{ roles: IRole[] }>('roles');
+async function isPlatformOperator(userId: string): Promise<boolean> {
+  const user = await User.findById(userId).select('platformRole');
 
   if (!user) return false;
 
-  return user.roles.some((role) => role.tenantId === undefined);
+  return user.platformRole !== 'user';
 }
 
 /**
@@ -65,9 +66,9 @@ export async function resolveTenant(req: Request, res: Response, next: NextFunct
     return next();
   }
 
-  const isGlobalOperator = await userHasGlobalRole(req.user._id.toString());
+  const isPlatformLevelUser = await isPlatformOperator(req.user._id.toString());
 
-  if (isGlobalOperator) {
+  if (isPlatformLevelUser) {
     req.tenantId = headerTenantId;
     return next();
   }

@@ -66,4 +66,38 @@ export class MembershipRepository implements IMembershipRepository {
       return err(new InfrastructureError());
     }
   }
+
+  async addRole(
+    organizationId: string,
+    userId: string,
+    roleId: string,
+  ): Promise<DataResult<IMembership | null>> {
+    try {
+      const membership = await Membership.findOneAndUpdate(
+        { organizationId, userId },
+        { $addToSet: { roleIds: roleId } },
+        { new: true },
+      );
+      return ok(membership);
+    } catch {
+      return err(new InfrastructureError());
+    }
+  }
+
+  async removeRole(
+    organizationId: string,
+    userId: string,
+    roleId: string,
+  ): Promise<DataResult<IMembership | null>> {
+    try {
+      const membership = await Membership.findOneAndUpdate(
+        { organizationId, userId },
+        { $pull: { roleIds: roleId } },
+        { new: true },
+      );
+      return ok(membership);
+    } catch {
+      return err(new InfrastructureError());
+    }
+  }
 }

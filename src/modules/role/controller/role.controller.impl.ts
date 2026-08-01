@@ -50,9 +50,13 @@ export class RoleController implements IRoleController {
   }
 
   async assignToUser(req: Request, _res: Response, _next: NextFunction): Promise<AssignRoleResult> {
-    const dto = new AssignRoleDto(req.params.userId as string, req.body.roleId);
+    const dto = new AssignRoleDto(
+      req.params.orgId as string,
+      req.params.userId as string,
+      req.body.roleId,
+    );
 
-    return this.service.assignToUser(dto, req.user?._id?.toString());
+    return this.service.assignToUser(dto, req.tenantId, req.user?._id?.toString());
   }
 
   async removeFromUser(
@@ -60,8 +64,12 @@ export class RoleController implements IRoleController {
     _res: Response,
     _next: NextFunction,
   ): Promise<AssignRoleResult> {
-    const dto = new AssignRoleDto(req.params.userId as string, req.params.roleId as string);
+    const dto = new AssignRoleDto(
+      req.params.orgId as string,
+      req.params.userId as string,
+      req.params.roleId as string,
+    );
 
-    return this.service.removeFromUser(dto, req.user?._id?.toString());
+    return this.service.removeFromUser(dto, req.tenantId, req.user?._id?.toString());
   }
 }

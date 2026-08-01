@@ -2,7 +2,6 @@ import { Router } from 'express';
 
 import { auditService } from '../../audit/routes/audit.routes.js';
 import { createMailer } from '../../email/mailer.facotry.js';
-import { DefaultRoleProvider } from '../../role/service/default-role-provider.impl.js';
 import { SessionRepository } from '../../session/repository/session.repository.impl.js';
 import { SessionService } from '../../session/service/session.service.impl.js';
 import { AuthController } from '../controller/auth.controller.impl.js';
@@ -53,7 +52,6 @@ const router = Router();
 const authRepository = new AuthRepository();
 const mailer = createMailer();
 const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
-const defaultRoleProvider = new DefaultRoleProvider();
 const sessionRepository = new SessionRepository();
 const sessionService = new SessionService(sessionRepository);
 
@@ -62,7 +60,6 @@ const authService = new AuthService(
   mailer,
   clientUrl,
   sessionService,
-  defaultRoleProvider,
   auditService,
 );
 const authController = new AuthController(authService);

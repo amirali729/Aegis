@@ -24,7 +24,12 @@ const roleSchema: Schema = new mongoose.Schema(
     // points at the Organization collection - Organization IS the tenant.
     tenantId: {
       type: Schema.Types.ObjectId,
-      ref: 'Organization',
+      // Mongoose model is registered as "Tenant" (see
+      // organizations/model/organization.model.ts) even though the
+      // module/type layer calls it Organization - ref must match the
+      // registered model name or populate('tenantId') throws
+      // MissingSchemaError.
+      ref: 'Tenant',
       index: true,
     },
     name: {

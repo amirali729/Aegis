@@ -30,25 +30,22 @@ export const DEFAULT_PERMISSIONS: Array<{
   { key: 'invitation:view', description: 'View pending organization invitations.' },
   { key: 'invitation:revoke', description: 'Revoke organization invitations.' },
   { key: 'audit:view', description: 'View audit logs.' },
+  { key: 'oauth_client:view', description: 'View OAuth clients for an application.' },
+  { key: 'oauth_client:create', description: 'Register a new OAuth client for an application.' },
+  { key: 'oauth_client:update', description: 'Regenerate an OAuth client secret.' },
+  { key: 'oauth_client:delete', description: 'Revoke an OAuth client.' },
 ];
 
-export const DEFAULT_ROLES: Array<{
-  name: string;
-  description: string;
-  isSystem: boolean;
-  /** "*" grants every permission in DEFAULT_PERMISSIONS. */
-  permissionKeys: string[] | '*';
-}> = [
-  {
-    name: 'Admin',
-    description: 'Full administrative access.',
-    isSystem: true,
-    permissionKeys: '*',
-  },
-  {
-    name: 'User',
-    description: 'Default role for newly registered accounts. No elevated permissions.',
-    isSystem: true,
-    permissionKeys: ['organization:create', 'organization:view'],
-  },
-];
+// NOTE: there used to be a DEFAULT_ROLES export here seeding two global
+// (tenantId: undefined) Role documents, "Admin" and "User", which acted
+// as a stand-in for platform-level access by being assigned directly to
+// User.roles. That mechanism is gone - platform-level access is now a
+// fixed User.platformRole enum ('owner'/'admin'/'support'/'user', see
+// shared/security/authorization/platform-roles.ts) with a hardcoded
+// permission-key map, not a customizable Role document. See
+// bootstrap/assign-admin.ts for granting the 'owner' platform role.
+//
+// This file's permission catalog is still very much in use though: an
+// org's auto-provisioned "Owner" role (see
+// organizations/service/organization.service.impl.ts, provisionOwner)
+// is granted every permission in DEFAULT_PERMISSIONS.
