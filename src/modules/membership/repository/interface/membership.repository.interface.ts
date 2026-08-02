@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
 import type { Result } from '../../../../shared/result/result.js';
 import type { IMembership, MembershipStatus } from '../../model/membership.model.js';
@@ -14,6 +15,7 @@ export interface IMembershipRepository {
     organizationId: string,
     userId: string,
     status?: MembershipStatus,
+    session?: ClientSession,
   ): Promise<DataResult<IMembership>>;
 
   updateStatus(
@@ -33,6 +35,7 @@ export interface IMembershipRepository {
     organizationId: string,
     userId: string,
     roleId: string,
+    session?: ClientSession,
   ): Promise<DataResult<IMembership | null>>;
 
   /**

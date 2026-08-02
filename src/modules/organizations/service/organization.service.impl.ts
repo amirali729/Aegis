@@ -1,25 +1,44 @@
+import mongoose from 'mongoose';
+
+import { InfrastructureError } from '../../../shared/errors/infrastructure.error.js';
 import { ValidationError } from '../../../shared/errors/validation.error.js';
 import { err, ok } from '../../../shared/result/result.js';
 import type { CreateOrganizationDto } from '../dto/create-organization.dto.js';
 import type { UpdateOrganizationDto } from '../dto/update-organization.dto.js';
 import { OrganizationNotFoundError } from '../errors/organization-not-found.error.js';
 import { OrganizationSlugTakenError } from '../errors/organization-slug-taken.error.js';
+import type { IOrganization } from '../model/organization.model.js';
 import type { IOrganizationRepository } from '../repository/interface/organization.repository.interface.js';
 import type {
   DeleteOrganizationResult,
+  OrganizationError,
   OrganizationListResult,
   OrganizationResult,
 } from '../types/organization.types.js';
 import type { IOrganizationService } from './interface/organization.service.interface.js';
 import { toOrganizationResponse } from './organization-mapper.js';
 
+import { createDomainEvent } from '../../../shared/events/domain-event.js';
+import { DOMAIN_EVENTS } from '../../../shared/events/domain-events.js';
+import { eventBus } from '../../../shared/events/event-bus.js';
+import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
+import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
 import type { IMembershipRepository } from '../../membership/repository/interface/membership.repository.interface.js';
 import type { IPermissionRepository } from '../../permission/repository/interface/permission.repository.interface.js';
 import { CreateRoleDto } from '../../role/dto/create-role.dto.js';
 import type { IRoleRepository } from '../../role/repository/interface/role.repository.interface.js';
 
-import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
-import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
+/**
+ * The only things ever thrown out of the create() transaction below are
+ * the domain errors already returned by the repository calls inside it
+ * (all members of OrganizationError) or a bare InfrastructureError - this
+ * type guard is how the catch block tells those apart from a genuine
+ * unexpected exception (a real bug, a driver-level error, etc.) without
+ * needing every repository error class to extend the built-in Error.
+ */
+function isOrganizationError(value: unknown): value is OrganizationError {
+  return typeof value === 'object' && value !== null && 'kind' in value;
+}
 
 function slugify(input: string): string {
   return input
@@ -90,16 +109,88 @@ export class OrganizationService implements IOrganizationService {
       return err(new OrganizationSlugTakenError());
     }
 
-    const created = await this.repository.create({
-      ...dto,
-      slug: baseSlug,
-    });
+    // Everything below - creating the Organization, the creator's
+    // Membership, the auto-provisioned "Owner" Role, and attaching that
+    // Role to the Membership - now happens inside a single MongoDB
+    // transaction (requires the replica-set MongoDB deployment - see
+    // Docker/development/docker-compose.yml). Previously this was a
+    // best-effort sequence of separate writes that could leave a
+    // half-provisioned organization behind if any step failed partway
+    // through (an org with no working Owner, or a Role that was never
+    // attached to anyone) - see the Phase 1 architecture review, section
+    // 18. Wrapping it in a transaction means either everything below
+    // commits together, or none of it does - an organization is never
+    // left in a broken, partially-provisioned state.
+    const session = await mongoose.startSession();
 
-    if (!created.ok) {
-      return err(created.error);
+    let organization: IOrganization | undefined;
+    let provisionedRoleId: string | undefined;
+
+    try {
+      await session.withTransaction(async () => {
+        const created = await this.repository.create({ ...dto, slug: baseSlug }, session);
+        if (!created.ok) throw created.error;
+        organization = created.value;
+
+        if (!actorId) return;
+
+        const organizationId = organization._id.toString();
+
+        const membershipResult = await this.membershipRepository.create(
+          organizationId,
+          actorId,
+          'active',
+          session,
+        );
+        if (!membershipResult.ok) throw membershipResult.error;
+
+        const globalPermissions = await this.permissionRepository.findAll(undefined);
+        const permissionIds = globalPermissions.ok
+          ? globalPermissions.value.map((p) => p._id.toString())
+          : [];
+
+        const role = await this.roleRepository.create(
+          new CreateRoleDto(
+            OWNER_ROLE_NAME,
+            'Full access within this organization.',
+            permissionIds,
+            organizationId,
+          ),
+          session,
+        );
+        if (!role.ok) throw role.error;
+        provisionedRoleId = role.value._id.toString();
+
+        const attached = await this.membershipRepository.addRole(
+          organizationId,
+          actorId,
+          provisionedRoleId,
+          session,
+        );
+        if (!attached.ok) throw attached.error;
+        if (!attached.value) throw new InfrastructureError();
+      });
+    } catch (error) {
+      return err(isOrganizationError(error) ? error : new InfrastructureError());
+    } finally {
+      await session.endSession();
     }
 
-    const organizationId = created.value._id.toString();
+    if (!organization) {
+      // Should be unreachable - withTransaction() only resolves without
+      // throwing once every write inside it (including this assignment)
+      // has succeeded. Guarded anyway so TypeScript can narrow the type
+      // below, and so a genuinely unexpected case fails loudly rather
+      // than continuing with an undefined organization.
+      return err(new InfrastructureError());
+    }
+
+    // Audit logging happens AFTER the transaction has committed, not
+    // inside it - IAuditLogger isn't session-aware, and audit records are
+    // deliberately fire-and-forget (never allowed to fail or block the
+    // business operation they describe), so they don't belong inside the
+    // atomic write set itself.
+    const organizationId = organization._id.toString();
 
     void this.auditLogger?.record(
       new RecordAuditEventDto(
@@ -111,95 +202,74 @@ export class OrganizationService implements IOrganizationService {
         organizationId,
         undefined,
         undefined,
-        { slug: created.value.slug },
+        { slug: organization.slug },
         organizationId,
       ),
     );
 
-    // Whoever creates an org becomes its owner - without this, a brand
-    // new org would have no members at all and nobody could ever manage
-    // it (the org-creation permission deadlock this whole fix addresses).
-    if (actorId) {
-      await this.provisionOwner(organizationId, actorId);
-    }
+    eventBus.publish(
+      createDomainEvent(
+        DOMAIN_EVENTS.ORGANIZATION_CREATED,
+        { organizationId, name: organization.name, slug: organization.slug },
+        { organizationId, actorId },
+      ),
+    );
 
-    return ok(toOrganizationResponse(created.value));
-  }
-
-  /**
-   * Auto-provisions the creator as the new Organization's owner: an
-   * org-scoped "Owner" role holding every platform permission key
-   * (referencing the existing GLOBAL Permission catalog - no need to
-   * duplicate Permission documents per org, only the Role granting them
-   * is org-scoped), an active Membership, and the role attached to the
-   * user's account. Best-effort: failures here are logged but don't
-   * fail organization creation itself, since the org was already
-   * created successfully - an operator can always fix membership by
-   * hand afterward, whereas rolling back the org would be worse.
-   */
-  /**
-   * Auto-provisions the creator as the new Organization's owner: an
-   * org-scoped "Owner" role holding every platform permission key
-   * (referencing the existing GLOBAL Permission catalog - no need to
-   * duplicate Permission documents per org, only the Role granting them
-   * is org-scoped), an active Membership, and the role attached to that
-   * Membership (roles attach to Membership, never directly to a User -
-   * see modules/membership/model/membership.model.ts). Best-effort:
-   * failures here are logged but don't fail organization creation
-   * itself, since the org was already created successfully - an
-   * operator can always fix membership by hand afterward, whereas
-   * rolling back the org would be worse.
-   *
-   * Runs regardless of MULTI_TENANT: permission-evaluator.ts resolves
-   * org-level permissions from the caller's active Memberships even
-   * when no organizationId is supplied (single-tenant deployments never
-   * populate req.tenantId), so a single-tenant org's Owner role is not
-   * dead weight - it is exactly what makes the creator able to manage
-   * the org they just created.
-   */
-  private async provisionOwner(organizationId: string, userId: string): Promise<void> {
-    try {
-      const membershipResult = await this.membershipRepository.create(
-        organizationId,
-        userId,
-        'active',
-      );
-      if (!membershipResult.ok) {
-        console.error('provisionOwner: failed to create membership', membershipResult.error);
-        return;
-      }
-
-      const globalPermissions = await this.permissionRepository.findAll(undefined);
-      const permissionIds = globalPermissions.ok
-        ? globalPermissions.value.map((p) => p._id.toString())
-        : [];
-
-      const role = await this.roleRepository.create(
-        new CreateRoleDto(
-          OWNER_ROLE_NAME,
-          'Full access within this organization.',
-          permissionIds,
+    // Previously, provisioning the Owner role called the Role
+    // repository directly (bypassing RoleService.create()/
+    // assignToUser(), which is where role.created/role.assigned audit
+    // events are normally recorded) - meaning an org's very first role
+    // grant was invisible to audit history. Recording both explicitly
+    // here closes that gap.
+    if (actorId && provisionedRoleId) {
+      void this.auditLogger?.record(
+        new RecordAuditEventDto(
+          'role.created',
+          true,
+          actorId,
+          'user',
+          'role',
+          provisionedRoleId,
+          undefined,
+          undefined,
+          { name: OWNER_ROLE_NAME, organizationId },
           organizationId,
         ),
       );
 
-      if (!role.ok) {
-        console.error('provisionOwner: failed to create Owner role', role.error);
-        return;
-      }
-
-      const attached = await this.membershipRepository.addRole(
-        organizationId,
-        userId,
-        role.value._id.toString(),
+      void this.auditLogger?.record(
+        new RecordAuditEventDto(
+          'role.assigned',
+          true,
+          actorId,
+          'user',
+          'user',
+          actorId,
+          undefined,
+          undefined,
+          { roleId: provisionedRoleId, organizationId },
+          organizationId,
+        ),
       );
 
-      if (!attached.ok || !attached.value) {
-        console.error('provisionOwner: failed to attach Owner role to membership');
-      }
-    } catch (error) {
-      console.error('provisionOwner: unexpected error', error);
+      eventBus.publish(
+        createDomainEvent(
+          DOMAIN_EVENTS.ROLE_CREATED,
+          { roleId: provisionedRoleId, name: OWNER_ROLE_NAME, organizationId },
+          { organizationId, actorId },
+        ),
+      );
+
+      eventBus.publish(
+        createDomainEvent(
+          DOMAIN_EVENTS.ROLE_ASSIGNED,
+          { userId: actorId, roleId: provisionedRoleId, organizationId },
+          { organizationId, actorId },
+        ),
+      );
     }
+
+    return ok(toOrganizationResponse(organization));
   }
 
   async update(
@@ -247,6 +317,14 @@ export class OrganizationService implements IOrganizationService {
       ),
     );
 
+    eventBus.publish(
+      createDomainEvent(
+        DOMAIN_EVENTS.ORGANIZATION_UPDATED,
+        { organizationId: id },
+        { organizationId: id, actorId },
+      ),
+    );
+
     return ok(toOrganizationResponse(updated.value));
   }
 
@@ -281,6 +359,14 @@ export class OrganizationService implements IOrganizationService {
         undefined,
         undefined,
         id,
+      ),
+    );
+
+    eventBus.publish(
+      createDomainEvent(
+        DOMAIN_EVENTS.ORGANIZATION_DELETED,
+        { organizationId: id },
+        { organizationId: id, actorId },
       ),
     );
 

@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import { InfrastructureError } from '../../../shared/errors/infrastructure.error.js';
 import { err, ok } from '../../../shared/result/result.js';
 import type { IMembership, MembershipStatus } from '../model/membership.model.js';
@@ -32,10 +33,13 @@ export class MembershipRepository implements IMembershipRepository {
     organizationId: string,
     userId: string,
     status: MembershipStatus = 'active',
+    session?: ClientSession,
   ): Promise<DataResult<IMembership>> {
     try {
-      const membership = await Membership.create({ organizationId, userId, status });
-      return ok(membership);
+      const membership = await Membership.create([{ organizationId, userId, status }], {
+        session,
+      });
+      return ok(membership[0]!);
     } catch {
       return err(new InfrastructureError());
     }
@@ -71,12 +75,13 @@ export class MembershipRepository implements IMembershipRepository {
     organizationId: string,
     userId: string,
     roleId: string,
+    session?: ClientSession,
   ): Promise<DataResult<IMembership | null>> {
     try {
       const membership = await Membership.findOneAndUpdate(
         { organizationId, userId },
         { $addToSet: { roleIds: roleId } },
-        { new: true },
+        { new: true, session },
       );
       return ok(membership);
     } catch {

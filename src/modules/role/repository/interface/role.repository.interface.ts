@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
 import type { Result } from '../../../../shared/result/result.js';
 import type { CreateRoleDto } from '../../dto/create-role.dto.js';
@@ -18,7 +19,10 @@ export interface IRoleRepository {
   /** Returns roles with `permissions` populated, for permission evaluation. */
   findByIdsWithPermissions(ids: string[]): Promise<DataResult<IRole[]>>;
 
-  create(dto: CreateRoleDto & { tenantId?: string }): Promise<DataResult<IRole>>;
+  create(
+    dto: CreateRoleDto & { tenantId?: string },
+    session?: ClientSession,
+  ): Promise<DataResult<IRole>>;
 
   updateMeta(id: string, dto: UpdateRoleDto): Promise<DataResult<IRole | null>>;
 

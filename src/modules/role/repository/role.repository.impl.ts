@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import { InfrastructureError } from '../../../shared/errors/infrastructure.error.js';
 import { err, ok } from '../../../shared/result/result.js';
 import type { CreateRoleDto } from '../dto/create-role.dto.js';
@@ -47,15 +48,23 @@ export class RoleRepository implements IRoleRepository {
     }
   }
 
-  async create(dto: CreateRoleDto & { tenantId?: string }): Promise<DataResult<IRole>> {
+  async create(
+    dto: CreateRoleDto & { tenantId?: string },
+    session?: ClientSession,
+  ): Promise<DataResult<IRole>> {
     try {
-      const role = await Role.create({
-        tenantId: dto.tenantId,
-        name: dto.name,
-        description: dto.description,
-        permissions: dto.permissionIds,
-      });
-      const populated = await role.populate('permissions');
+      const created = await Role.create(
+        [
+          {
+            tenantId: dto.tenantId,
+            name: dto.name,
+            description: dto.description,
+            permissions: dto.permissionIds,
+          },
+        ],
+        { session },
+      );
+      const populated = await created[0]!.populate({ path: 'permissions', options: { session } });
       return ok(populated);
     } catch {
       return err(new InfrastructureError());
