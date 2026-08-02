@@ -11,6 +11,10 @@ import authRouter from './modules/auth/routes/auth.routes.js';
 import invitationPublicRouter from './modules/invitation/routes/invitation-public.routes.js';
 import invitationRouter from './modules/invitation/routes/invitation.routes.js';
 import membershipRouter from './modules/membership/routes/membership.routes.js';
+import authorizeRouter from './modules/oauth/routes/authorize.routes.js';
+import discoveryRouter from './modules/oauth/routes/discovery.routes.js';
+import oauthClientRouter from './modules/oauth/routes/oauth-client.routes.js';
+import tokenRouter from './modules/oauth/routes/token.routes.js';
 import organizationRouter from './modules/organizations/routes/organization.routes.js';
 import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
@@ -19,6 +23,7 @@ import healthRouter from './shared/http/health.router.js';
 import swaggerRouter from './shared/openapi/swagger.routes.js';
 
 import { parseCorsOrigins } from './shared/config/cors-origins.js';
+import './shared/events/event-bus.js';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.js';
 import { globalRateLimiter } from './shared/security/middleware/rate-limit.middleware.js';
 import { Logger } from './shared/utils/logger.js';
@@ -114,6 +119,10 @@ export function createApp() {
   app.use('/api/v1', invitationRouter);
   app.use('/api/v1', applicationRouter);
   app.use('/api/v1', apiKeyRouter);
+  app.use('/api/v1', oauthClientRouter);
+  app.use(authorizeRouter);
+  app.use(tokenRouter);
+  app.use(discoveryRouter);
   app.use('/api/v1', sessionRouter);
   app.use('/api/v1', auditRouter);
 
