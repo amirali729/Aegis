@@ -34,10 +34,10 @@ async function main() {
   await import('../modules/application/model/application.model.js');
   await import('../modules/apikey/model/api-key.model.js');
   await import('../modules/session/model/session.model.js');
-  // await import('../modules/oauth/model/oauth-client.model.js');
-  // await import('../modules/oauth/model/authorization-code.model.js');
-  // await import('../modules/oauth/model/oauth-access-token.model.js');
-  // await import('../modules/oauth/model/oauth-refresh-token.model.js');
+  await import('../modules/oauth/model/oauth-client.model.js');
+  await import('../modules/oauth/model/authorization-code.model.js');
+  await import('../modules/oauth/model/oauth-access-token.model.js');
+  await import('../modules/oauth/model/oauth-refresh-token.model.js');
 
   const registeredModelNames = new Set(mongoose.modelNames());
   const problems: string[] = [];

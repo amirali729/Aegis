@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import { InfrastructureError } from '../../../shared/errors/infrastructure.error.js';
 import { err, ok } from '../../../shared/result/result.js';
 import type { CreateOrganizationDto } from '../dto/create-organization.dto.js';
@@ -39,14 +40,15 @@ export class OrganizationRepository implements IOrganizationRepository {
     }
   }
 
-  async create(dto: CreateOrganizationDto & { slug: string }): Promise<DataResult<IOrganization>> {
+  async create(
+    dto: CreateOrganizationDto & { slug: string },
+    session?: ClientSession,
+  ): Promise<DataResult<IOrganization>> {
     try {
-      const tenant = await Tenant.create({
-        name: dto.name,
-        slug: dto.slug,
-        plan: dto.plan,
+      const tenant = await Tenant.create([{ name: dto.name, slug: dto.slug, plan: dto.plan }], {
+        session,
       });
-      return ok(tenant);
+      return ok(tenant[0]!);
     } catch {
       return err(new InfrastructureError());
     }

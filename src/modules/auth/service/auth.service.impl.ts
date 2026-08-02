@@ -12,6 +12,9 @@ import type { IAuthRepository } from '../repository/interface/auth.repository.in
 import type { IAuthService } from './interface/auth.service.interface.js';
 import { toUserResponse } from './user-mapper.js';
 
+import { createDomainEvent } from '../../../shared/events/domain-event.js';
+import { DOMAIN_EVENTS } from '../../../shared/events/domain-events.js';
+import { eventBus } from '../../../shared/events/event-bus.js';
 import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
 import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
 import type {
@@ -28,7 +31,10 @@ import type { ResetPasswordDto } from '../dto/reset-password.dto.js';
 import type { SignUpDto } from '../dto/signup.dto.js';
 import type { VerifyEmailDto } from '../dto/verify-email.dto.js';
 
-import { getUserPermissionKeys } from '../../../shared/security/authorization/permission-evaluator.js';
+import {
+  expandPermissionKeysForClient,
+  getUserPermissionKeys,
+} from '../../../shared/security/authorization/permission-evaluator.js';
 import { AccountLockedError } from '../errors/account-locked.error.js';
 import { EmailAlreadyExistsError } from '../errors/email-already-exists.error.js';
 import { InvalidCredentialsError } from '../errors/invalid-credentials.error.js';
@@ -220,6 +226,14 @@ export class AuthService implements IAuthService {
       ),
     );
 
+    eventBus.publish(
+      createDomainEvent(
+        DOMAIN_EVENTS.USER_LOGIN,
+        { userId: user._id.toString() },
+        { organizationId: tenantId, actorId: user._id.toString() },
+      ),
+    );
+
     const permissionKeys = await getUserPermissionKeys(user._id.toString(), tenantId);
 
     return ok(
@@ -227,7 +241,7 @@ export class AuthService implements IAuthService {
         toUserResponse(user),
         accessToken,
         session.value.rawRefreshToken,
-        Array.from(permissionKeys),
+        await expandPermissionKeysForClient(permissionKeys),
       ),
     );
   }
@@ -292,6 +306,8 @@ export class AuthService implements IAuthService {
     void this.auditLogger?.record(
       new RecordAuditEventDto('auth.logout_all', true, userId, 'user', 'user', userId),
     );
+
+    eventBus.publish(createDomainEvent(DOMAIN_EVENTS.USER_LOGOUT, { userId }, { actorId: userId }));
 
     return ok(new LogoutResponse('Logged out from all devices.'));
   }

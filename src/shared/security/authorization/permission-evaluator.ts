@@ -1,6 +1,7 @@
 import { User } from '../../../modules/auth/model/user.model.js';
 import { Membership } from '../../../modules/membership/model/membership.model.js';
 import type { IPermission } from '../../../modules/permission/model/permission.model.js';
+import { Permission } from '../../../modules/permission/model/permission.model.js';
 import type { IRole } from '../../../modules/role/model/role.model.js';
 import { ALL_PERMISSIONS, PLATFORM_ROLE_PERMISSIONS } from './platform-roles.js';
 
@@ -83,4 +84,41 @@ export async function getUserPermissionKeys(
   }
 
   return keys;
+}
+
+/**
+ * getUserPermissionKeys()'s Set may contain the literal ALL_PERMISSIONS
+ * sentinel ('*') for a Platform Owner - correct and necessary for
+ * requirePermission()/requireAnyPermission(), which check for it
+ * explicitly, but WRONG to ever hand back verbatim in an API response
+ * body. A frontend's `can()`/`hasPermission()` helpers (or any other
+ * consumer doing `permissions.includes(key)`) have no way to know '*'
+ * means "everything" - naive membership checks would incorrectly treat
+ * a Platform Owner as having NO permissions at all.
+ *
+ * Call this (never the raw Set) at every point a permission-key array
+ * is serialized into a response body for an external caller - e.g. the
+ * login response (auth.service.impl.ts). It expands '*' into every
+ * permission key currently in the global catalog, evaluated fresh at
+ * call time (this is safe precisely because callers like login
+ * re-evaluate permissions on every request rather than caching this
+ * list - a permission added to the catalog tomorrow is simply included
+ * the next time this runs, same as the sentinel itself would cover).
+ */
+export async function expandPermissionKeysForClient(keys: Set<string>): Promise<string[]> {
+  if (!keys.has(ALL_PERMISSIONS)) {
+    return Array.from(keys);
+  }
+
+  const allPermissions = await Permission.find().select('key');
+  const expanded = new Set(allPermissions.map((permission) => permission.key));
+
+  // Union with whatever else was already in the set (defensive - in
+  // practice a Platform Owner's set is just { '*' }, but this way any
+  // other key present alongside the sentinel is never silently dropped).
+  for (const key of keys) {
+    if (key !== ALL_PERMISSIONS) expanded.add(key);
+  }
+
+  return Array.from(expanded);
 }

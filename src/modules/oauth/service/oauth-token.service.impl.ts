@@ -1,10 +1,16 @@
 import crypto from 'crypto';
 
 import { User } from '../../../modules/auth/model/user.model.js';
+import { createDomainEvent } from '../../../shared/events/domain-event.js';
+import { DOMAIN_EVENTS } from '../../../shared/events/domain-events.js';
+import { eventBus } from '../../../shared/events/event-bus.js';
 import type { Result } from '../../../shared/result/result.js';
 import { err, ok } from '../../../shared/result/result.js';
+import { verifySecretSlow } from '../../../shared/security/hashing/slow-hash.js';
 import { hashToken } from '../../../shared/security/hashing/token-hash.js';
 import { parseDurationMs } from '../../../shared/utils/duration.js';
+import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
+import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
 import { OAuthTokenError } from '../errors/oauth-token.error.js';
 import type { IOAuthClient } from '../model/oauth-client.model.js';
 import type { IAuthorizationCodeRepository } from '../repository/interface/authorization-code.repository.interface.js';
@@ -12,6 +18,7 @@ import type { IOAuthAccessTokenRepository } from '../repository/interface/oauth-
 import type { IOAuthClientRepository } from '../repository/interface/oauth-client.repository.interface.js';
 import type { IOAuthRefreshTokenRepository } from '../repository/interface/oauth-refresh-token.repository.interface.js';
 import { IntrospectionResponse, TokenResponse } from '../responses/token.response.js';
+import { createIdToken } from '../security/id-token.js';
 import { verifyPkceCodeVerifier } from '../security/pkce.js';
 import type { TokenRequest } from '../validation/token.schemas.js';
 import type {
@@ -19,6 +26,7 @@ import type {
   IOAuthTokenService,
   RevokeResult,
   TokenResult,
+  UserInfoResult,
 } from './interface/oauth-token.service.interface.js';
 
 const ACCESS_TOKEN_TTL_MS = parseDurationMs(
@@ -30,6 +38,12 @@ const REFRESH_TOKEN_TTL_MS = parseDurationMs(
   30 * 24 * 60 * 60 * 1000,
 );
 
+// Must be a stable, publicly resolvable URL in production - it's the
+// "iss" claim third-party clients check ID Tokens against. Defaults to
+// localhost purely for local development (matches server.ts's own
+// PORT default).
+const OIDC_ISSUER = process.env.OAUTH_ISSUER ?? 'http://localhost:3000';
+
 function generateRawToken(): string {
   return crypto.randomBytes(40).toString('hex');
 }
@@ -40,6 +54,7 @@ export class OAuthTokenService implements IOAuthTokenService {
     private readonly codeRepository: IAuthorizationCodeRepository,
     private readonly accessTokenRepository: IOAuthAccessTokenRepository,
     private readonly refreshTokenRepository: IOAuthRefreshTokenRepository,
+    private readonly auditLogger?: IAuditLogger,
   ) {}
 
   async exchange(request: TokenRequest): Promise<TokenResult> {
@@ -78,15 +93,38 @@ export class OAuthTokenService implements IOAuthTokenService {
 
     const code = found.value;
 
-    // NOTE: a reused code is a strong signal of a stolen/replayed code
-    // (RFC 6749 section 10.5 recommends revoking every token previously
-    // issued from it). AuthorizationCode doesn't currently link forward
-    // to the tokens it issued, so that cascade isn't implemented yet -
-    // this rejects the reuse, but doesn't (yet) revoke anything already
-    // issued from the first, legitimate use. Flagged as follow-up work,
-    // not silently skipped.
+    // A reused code is a strong signal the first, legitimate token pair
+    // was intercepted (RFC 6749 section 10.5) - cascade-revoke whatever
+    // was issued from it the first time, then reject this attempt. This
+    // is handled BEFORE the other validity checks specifically because a
+    // reuse is a security event worth its own response, not just a
+    // generic "invalid code".
+    if (code.used) {
+      if (code.issuedAccessTokenId) {
+        await this.accessTokenRepository.revoke(code.issuedAccessTokenId.toString());
+      }
+      if (code.issuedRefreshTokenId) {
+        await this.refreshTokenRepository.revoke(code.issuedRefreshTokenId.toString());
+      }
+
+      void this.auditLogger?.record(
+        new RecordAuditEventDto(
+          'oauth_code.reuse_detected',
+          false,
+          code.userId.toString(),
+          'user',
+          'oauth_client',
+          client._id.toString(),
+          undefined,
+          undefined,
+          { codeId: code._id.toString() },
+        ),
+      );
+
+      return err(new OAuthTokenError('invalid_grant', 'Invalid or expired authorization code.'));
+    }
+
     if (
-      code.used ||
       code.expiresAt.getTime() < Date.now() ||
       code.clientId.toString() !== client._id.toString() ||
       code.redirectUri !== request.redirect_uri
@@ -98,14 +136,21 @@ export class OAuthTokenService implements IOAuthTokenService {
       return err(new OAuthTokenError('invalid_grant', 'PKCE verification failed.'));
     }
 
-    await this.codeRepository.markUsed(code._id.toString());
-
     const user = await User.findById(code.userId);
     if (!user) {
       return err(new OAuthTokenError('invalid_grant', 'The authorizing user no longer exists.'));
     }
 
-    return this.issueTokens(client, user._id.toString(), code.scopes);
+    const issued = await this.issueTokenPair(client, user, code.scopes);
+    if (!issued.ok) return err(issued.error);
+
+    await this.codeRepository.markUsedAndLinkTokens(
+      code._id.toString(),
+      issued.value.accessTokenId,
+      issued.value.refreshTokenId,
+    );
+
+    return ok(issued.value.response);
   }
 
   private async exchangeRefreshToken(
@@ -171,6 +216,23 @@ export class OAuthTokenService implements IOAuthTokenService {
       return err(new OAuthTokenError('server_error', 'Failed to issue an access token.'));
     }
 
+    let idToken: string | undefined;
+
+    if (found.value.scopes.includes('openid')) {
+      const user = await User.findById(found.value.userId);
+      if (user) {
+        idToken = createIdToken({
+          issuer: OIDC_ISSUER,
+          userId: user._id.toString(),
+          clientId: client.clientId,
+          scopes: found.value.scopes,
+          email: user.email,
+          emailVerified: user.isVerified,
+          name: user.fullName,
+        });
+      }
+    }
+
     return ok(
       new TokenResponse(
         rawAccessToken,
@@ -178,15 +240,22 @@ export class OAuthTokenService implements IOAuthTokenService {
         Math.floor(ACCESS_TOKEN_TTL_MS / 1000),
         found.value.scopes.join(' '),
         newRawRefreshToken,
+        idToken,
       ),
     );
   }
 
-  private async issueTokens(
+  private async issueTokenPair(
     client: IOAuthClient,
-    userId: string,
+    user: { _id: { toString(): string }; email: string; isVerified: boolean; fullName?: string },
     scopes: string[],
-  ): Promise<TokenResult> {
+  ): Promise<
+    Result<
+      { response: TokenResponse; accessTokenId: string; refreshTokenId?: string },
+      OAuthTokenError
+    >
+  > {
+    const userId = user._id.toString();
     const rawAccessToken = generateRawToken();
     const accessExpiresAt = new Date(Date.now() + ACCESS_TOKEN_TTL_MS);
 
@@ -203,6 +272,7 @@ export class OAuthTokenService implements IOAuthTokenService {
     }
 
     let rawRefreshToken: string | undefined;
+    let refreshTokenId: string | undefined;
 
     if (client.grantTypes.includes('refresh_token')) {
       rawRefreshToken = generateRawToken();
@@ -219,17 +289,34 @@ export class OAuthTokenService implements IOAuthTokenService {
       if (!createdRefreshToken.ok) {
         return err(new OAuthTokenError('server_error', 'Failed to issue a refresh token.'));
       }
+
+      refreshTokenId = createdRefreshToken.value._id.toString();
     }
 
-    return ok(
-      new TokenResponse(
+    const idToken = scopes.includes('openid')
+      ? createIdToken({
+          issuer: OIDC_ISSUER,
+          userId,
+          clientId: client.clientId,
+          scopes,
+          email: user.email,
+          emailVerified: user.isVerified,
+          name: user.fullName,
+        })
+      : undefined;
+
+    return ok({
+      response: new TokenResponse(
         rawAccessToken,
         'Bearer',
         Math.floor(ACCESS_TOKEN_TTL_MS / 1000),
         scopes.join(' '),
         rawRefreshToken,
+        idToken,
       ),
-    );
+      accessTokenId: createdAccessToken.value._id.toString(),
+      refreshTokenId,
+    });
   }
 
   async revoke(
@@ -253,6 +340,29 @@ export class OAuthTokenService implements IOAuthTokenService {
       const found = await this.accessTokenRepository.findByTokenHash(tokenHash);
       if (found.ok && found.value && found.value.clientId.toString() === client._id.toString()) {
         await this.accessTokenRepository.revoke(found.value._id.toString());
+
+        void this.auditLogger?.record(
+          new RecordAuditEventDto(
+            'oauth_token.revoked',
+            true,
+            found.value.userId.toString(),
+            'user',
+            'oauth_client',
+            client._id.toString(),
+            undefined,
+            undefined,
+            { tokenType: 'access_token' },
+          ),
+        );
+
+        eventBus.publish(
+          createDomainEvent(
+            DOMAIN_EVENTS.OAUTH_TOKEN_REVOKED,
+            { oauthClientId: client._id.toString(), tokenType: 'access_token' },
+            { actorId: found.value.userId.toString() },
+          ),
+        );
+
         return ok({ revoked: true });
       }
     }
@@ -260,6 +370,28 @@ export class OAuthTokenService implements IOAuthTokenService {
     const found = await this.refreshTokenRepository.findByTokenHash(tokenHash);
     if (found.ok && found.value && found.value.clientId.toString() === client._id.toString()) {
       await this.refreshTokenRepository.revoke(found.value._id.toString());
+
+      void this.auditLogger?.record(
+        new RecordAuditEventDto(
+          'oauth_token.revoked',
+          true,
+          found.value.userId.toString(),
+          'user',
+          'oauth_client',
+          client._id.toString(),
+          undefined,
+          undefined,
+          { tokenType: 'refresh_token' },
+        ),
+      );
+
+      eventBus.publish(
+        createDomainEvent(
+          DOMAIN_EVENTS.OAUTH_TOKEN_REVOKED,
+          { oauthClientId: client._id.toString(), tokenType: 'refresh_token' },
+          { actorId: found.value.userId.toString() },
+        ),
+      );
     }
 
     return ok({ revoked: true });
@@ -324,6 +456,45 @@ export class OAuthTokenService implements IOAuthTokenService {
     );
   }
 
+  async getUserInfo(accessToken: string): Promise<UserInfoResult> {
+    const found = await this.accessTokenRepository.findByTokenHash(hashToken(accessToken));
+
+    if (!found.ok) {
+      return err(new OAuthTokenError('server_error', 'Failed to look up access token.'));
+    }
+
+    if (
+      !found.value ||
+      found.value.revokedAt ||
+      found.value.expiresAt.getTime() < Date.now() ||
+      !found.value.scopes.includes('openid')
+    ) {
+      // RFC 6750 shape would use a 401 WWW-Authenticate challenge; kept
+      // simple here since this endpoint has no other callers yet.
+      return err(
+        new OAuthTokenError('invalid_client', 'Invalid, expired, or non-OIDC access token.', 401),
+      );
+    }
+
+    const user = await User.findById(found.value.userId);
+    if (!user) {
+      return err(new OAuthTokenError('invalid_client', 'The token subject no longer exists.', 401));
+    }
+
+    const claims: Record<string, unknown> = { sub: user._id.toString() };
+
+    if (found.value.scopes.includes('email')) {
+      claims.email = user.email;
+      claims.email_verified = user.isVerified;
+    }
+
+    if (found.value.scopes.includes('profile') && user.fullName) {
+      claims.name = user.fullName;
+    }
+
+    return ok(claims);
+  }
+
   private async authenticateClient(
     clientId: string,
     clientSecret: string | undefined,
@@ -339,7 +510,10 @@ export class OAuthTokenService implements IOAuthTokenService {
     }
 
     if (found.value.clientType === 'confidential') {
-      if (!clientSecret || hashToken(clientSecret) !== found.value.clientSecretHash) {
+      if (
+        !clientSecret ||
+        !(await verifySecretSlow(clientSecret, found.value.clientSecretHash ?? ''))
+      ) {
         return err(new OAuthTokenError('invalid_client', 'Invalid client credentials.', 401));
       }
     }

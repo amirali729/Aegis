@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import type { InfrastructureError } from '../../../../shared/errors/infrastructure.error.js';
 import type { Result } from '../../../../shared/result/result.js';
 import type { CreateOrganizationDto } from '../../dto/create-organization.dto.js';
@@ -13,7 +14,10 @@ export interface IOrganizationRepository {
 
   findBySlug(slug: string): Promise<DataResult<IOrganization | null>>;
 
-  create(dto: CreateOrganizationDto & { slug: string }): Promise<DataResult<IOrganization>>;
+  create(
+    dto: CreateOrganizationDto & { slug: string },
+    session?: ClientSession,
+  ): Promise<DataResult<IOrganization>>;
 
   update(id: string, dto: UpdateOrganizationDto): Promise<DataResult<IOrganization | null>>;
 
