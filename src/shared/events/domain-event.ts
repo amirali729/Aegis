@@ -1,34 +1,50 @@
-export const DOMAIN_EVENTS = {
-  ORGANIZATION_CREATED: 'organization.created',
-  ORGANIZATION_UPDATED: 'organization.updated',
-  ORGANIZATION_DELETED: 'organization.deleted',
+import crypto from 'crypto';
 
-  MEMBER_INVITED: 'invitation.created',
-  MEMBER_JOINED: 'invitation.accepted',
-  INVITATION_REVOKED: 'invitation.revoked',
-  MEMBER_REMOVED: 'member.removed',
-  MEMBER_SUSPENDED: 'member.suspended',
-  MEMBER_REACTIVATED: 'member.reactivated',
+/**
+ * The envelope every domain event carries, regardless of what module
+ * published it or what eventually consumes it (structured logging today;
+ * the Webhook Dispatcher, Notifications, Analytics, and Audit
+ * integrations in later phases - see event-bus.ts).
+ *
+ * Deliberately plain-data and JSON-serializable (no class instances, no
+ * Mongoose documents) - this is what makes it "durable enough for future
+ * queue implementations" (per the architecture brief): the exact same
+ * shape that gets handed to an in-process subscriber today is what would
+ * get JSON.stringify'd onto a RabbitMQ/Kafka/SQS message tomorrow,
+ * without needing to redesign the envelope when that swap happens.
+ */
+export interface DomainEvent<TPayload = Record<string, unknown>> {
+  /** Unique per publish - lets a future durable queue / webhook delivery layer deduplicate reliably. */
+  id: string;
+  /** e.g. "organization.created" - see domain-events.ts for the full, agreed vocabulary. */
+  type: string;
+  occurredAt: Date;
+  /**
+   * Present for every organization-scoped event, absent for
+   * platform-level ones (e.g. a bare user.login isn't inherently about
+   * any one organization). This is the field the Webhook Dispatcher
+   * (Phase 3c) filters delivery on - a webhook belonging to Organization
+   * A must never receive an event whose organizationId is Organization
+   * B's, or is undefined for a platform-level event it has no business
+   * seeing.
+   */
+  organizationId?: string;
+  /** Who/what caused this event - mirrors the actorId convention already used throughout audit logging. */
+  actorId?: string;
+  payload: TPayload;
+}
 
-  ROLE_CREATED: 'role.created',
-  ROLE_UPDATED: 'role.updated',
-  ROLE_DELETED: 'role.deleted',
-  ROLE_ASSIGNED: 'role.assigned',
-  ROLE_REMOVED: 'role.removed',
-
-  APPLICATION_CREATED: 'application.created',
-  APPLICATION_UPDATED: 'application.updated',
-  APPLICATION_DELETED: 'application.deleted',
-
-  OAUTH_CLIENT_CREATED: 'oauth_client.created',
-  OAUTH_CLIENT_REVOKED: 'oauth_client.revoked',
-  OAUTH_TOKEN_REVOKED: 'oauth_token.revoked',
-
-  API_KEY_CREATED: 'apikey.created',
-  API_KEY_REVOKED: 'apikey.revoked',
-
-  USER_LOGIN: 'auth.login',
-  USER_LOGOUT: 'auth.logout_all',
-} as const;
-
-export type DomainEventType = (typeof DOMAIN_EVENTS)[keyof typeof DOMAIN_EVENTS];
+export function createDomainEvent<TPayload>(
+  type: string,
+  payload: TPayload,
+  options?: { organizationId?: string; actorId?: string },
+): DomainEvent<TPayload> {
+  return {
+    id: crypto.randomUUID(),
+    type,
+    occurredAt: new Date(),
+    organizationId: options?.organizationId,
+    actorId: options?.actorId,
+    payload,
+  };
+}

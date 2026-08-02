@@ -18,16 +18,15 @@ import type {
 import type { IOrganizationService } from './interface/organization.service.interface.js';
 import { toOrganizationResponse } from './organization-mapper.js';
 
-import type { IMembershipRepository } from '../../membership/repository/interface/membership.repository.interface.js';
-import type { IPermissionRepository } from '../../permission/repository/interface/permission.repository.interface.js';
-import { CreateRoleDto } from '../../role/dto/create-role.dto.js';
-import type { IRoleRepository } from '../../role/repository/interface/role.repository.interface.js';
-
 import { createDomainEvent } from '../../../shared/events/domain-event.js';
 import { DOMAIN_EVENTS } from '../../../shared/events/domain-events.js';
 import { eventBus } from '../../../shared/events/event-bus.js';
 import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
 import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
+import type { IMembershipRepository } from '../../membership/repository/interface/membership.repository.interface.js';
+import type { IPermissionRepository } from '../../permission/repository/interface/permission.repository.interface.js';
+import { CreateRoleDto } from '../../role/dto/create-role.dto.js';
+import type { IRoleRepository } from '../../role/repository/interface/role.repository.interface.js';
 
 /**
  * The only things ever thrown out of the create() transaction below are
