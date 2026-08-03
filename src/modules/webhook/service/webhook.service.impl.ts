@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 import { ValidationError } from '../../../shared/errors/validation.error.js';
 import { err, ok } from '../../../shared/result/result.js';
-import { encryptSecret } from '../../../shared/security/encryption/symmetric-encrytpion.js';
+import { encryptSecret } from '../../../shared/security/encryption/symmetric-encryption.js';
 import { RecordAuditEventDto } from '../../audit/dto/record-audit-event.dto.js';
 import type { IAuditLogger } from '../../audit/service/interface/audit-logger.interface.js';
 import { OrganizationNotFoundError } from '../../organizations/errors/organization-not-found.error.js';

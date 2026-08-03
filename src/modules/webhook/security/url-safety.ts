@@ -28,6 +28,16 @@ const PRIVATE_IP_PATTERNS: RegExp[] = [
   /^fe80:/i, // IPv6 link-local
 ];
 
+/**
+ * Reused by both this file (checking the literal hostname string at
+ * creation time) and ssrf-guard.ts (checking a RESOLVED IP address at
+ * delivery time, after DNS lookup) - one shared definition of "what
+ * counts as private/loopback," never two lists to keep in sync.
+ */
+export function isPrivateOrLoopbackAddress(address: string): boolean {
+  return PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(address));
+}
+
 export function validateWebhookUrl(rawUrl: string): { ok: true } | { ok: false; reason: string } {
   let parsed: URL;
 
@@ -53,7 +63,7 @@ export function validateWebhookUrl(rawUrl: string): { ok: true } | { ok: false; 
     return { ok: false, reason: 'Webhook URLs cannot point at localhost.' };
   }
 
-  if (PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(hostname))) {
+  if (isPrivateOrLoopbackAddress(hostname)) {
     return { ok: false, reason: 'Webhook URLs cannot point at a private or loopback IP address.' };
   }
 
