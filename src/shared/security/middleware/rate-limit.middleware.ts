@@ -43,3 +43,23 @@ export const sensitiveActionRateLimiter = rateLimit({
     message: 'Too many requests. Please try again later.',
   },
 });
+
+/**
+ * Applied to webhook create/update/rotate-secret/delete - not a
+ * brute-force target the way login is, but a generous-yet-present
+ * backstop against a compromised or careless account hammering webhook
+ * registration/secret rotation (each rotation invalidates the previous
+ * secret, so unbounded rotation requests are a real self-inflicted
+ * denial-of-service risk worth guarding against specifically).
+ */
+export const webhookManagementRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    statusCode: 429,
+    message: 'Too many webhook management requests. Please try again later.',
+  },
+});

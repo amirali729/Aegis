@@ -34,6 +34,13 @@ export const DEFAULT_PERMISSIONS: Array<{
   { key: 'oauth_client:create', description: 'Register a new OAuth client for an application.' },
   { key: 'oauth_client:update', description: 'Regenerate an OAuth client secret.' },
   { key: 'oauth_client:delete', description: 'Revoke an OAuth client.' },
+  { key: 'webhook:view', description: 'View webhooks for an organization.' },
+  { key: 'webhook:create', description: 'Register a new webhook for an organization.' },
+  {
+    key: 'webhook:update',
+    description: 'Update, rotate the secret of, enable, or disable a webhook.',
+  },
+  { key: 'webhook:delete', description: 'Delete a webhook.' },
 ];
 
 // NOTE: there used to be a DEFAULT_ROLES export here seeding two global

@@ -38,6 +38,7 @@ async function main() {
   await import('../modules/oauth/model/authorization-code.model.js');
   await import('../modules/oauth/model/oauth-access-token.model.js');
   await import('../modules/oauth/model/oauth-refresh-token.model.js');
+  await import('../modules/webhook/model/webhook.model.js');
 
   const registeredModelNames = new Set(mongoose.modelNames());
   const problems: string[] = [];
