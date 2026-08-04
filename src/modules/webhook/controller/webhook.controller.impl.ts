@@ -4,8 +4,10 @@ import { UpdateWebhookDto } from '../dto/update-webhook.dto.js';
 import type { IWebhookService } from '../service/interface/webhook.service.interface.js';
 import type {
   DeleteWebhookResult,
+  RedeliverWebhookResult,
   RotateWebhookSecretResult,
   WebhookCreatedResult,
+  WebhookDeliveryListResult,
   WebhookListResult,
   WebhookResult,
 } from '../types/webhook.types.js';
@@ -74,6 +76,32 @@ export class WebhookController implements IWebhookController {
     return this.service.delete(
       req.params.orgId as string,
       req.params.webhookId as string,
+      req.tenantId,
+      req.user?._id?.toString(),
+    );
+  }
+
+  async listDeliveries(
+    req: Request,
+    _res: Response,
+    _next: NextFunction,
+  ): Promise<WebhookDeliveryListResult> {
+    return this.service.listDeliveries(
+      req.params.orgId as string,
+      req.params.webhookId as string,
+      req.tenantId,
+    );
+  }
+
+  async redeliver(
+    req: Request,
+    _res: Response,
+    _next: NextFunction,
+  ): Promise<RedeliverWebhookResult> {
+    return this.service.redeliver(
+      req.params.orgId as string,
+      req.params.webhookId as string,
+      req.params.deliveryId as string,
       req.tenantId,
       req.user?._id?.toString(),
     );

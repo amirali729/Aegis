@@ -76,7 +76,13 @@ export class WebhookDispatcher {
         organizationId: event.organizationId,
         eventId: event.id,
         eventType: event.type,
-        payload,
+        // WebhookEventPayload is a fixed-shape interface (no index
+        // signature), so it isn't structurally assignable to the
+        // repository's `Record<string, unknown>` storage type without an
+        // explicit cast - this is a storage-layer widening, not a loss of
+        // type safety at the call site (the value assigned is still
+        // exactly the mapper's output).
+        payload: payload as unknown as Record<string, unknown>,
         maxAttempts: DEFAULT_MAX_ATTEMPTS,
       });
 

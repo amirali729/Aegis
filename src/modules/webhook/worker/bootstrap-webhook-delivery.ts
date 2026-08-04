@@ -6,24 +6,46 @@ import { InMemoryWebhookDeliveryQueue } from './webhook-delivery-queue.js';
 import { WebhookDeliveryWorker } from './webhook-delivery-worker.js';
 import { WebhookDispatcher } from './webhook-dispatcher.js';
 
+// Module-level singletons, constructed once when this module is first
+// imported. Both app.ts (to boot the pipeline) and webhook.routes.ts (to
+// enqueue a manual redelivery against the SAME queue the retry sweep and
+// the dispatcher use) import from this one file, so there is exactly one
+// queue/worker/repository instance backing the whole delivery pipeline -
+// never a second, disconnected instance constructed by the routes file.
+const webhookRepository = new WebhookRepository();
+const webhookDeliveryRepository = new WebhookDeliveryRepository();
+
+const webhookDeliveryWorker = new WebhookDeliveryWorker(
+  webhookRepository,
+  webhookDeliveryRepository,
+  auditService,
+);
+
+export const webhookDeliveryQueue = new InMemoryWebhookDeliveryQueue(
+  (deliveryId) => webhookDeliveryWorker.attemptDelivery(deliveryId),
+  webhookDeliveryRepository,
+);
+
+const webhookDispatcher = new WebhookDispatcher(
+  webhookRepository,
+  webhookDeliveryRepository,
+  webhookDeliveryQueue,
+);
+
+let bootstrapped = false;
+
 /**
- * Wires the whole delivery pipeline together and subscribes it to the
- * Event Bus. Called exactly once, at process boot (see app.ts) - this is
- * the ONLY place that constructs a WebhookDispatcher, so there's exactly
- * one dispatcher subscribed to the bus, not one per request or per
- * module import.
+ * Starts the retry sweep and subscribes the dispatcher to the real
+ * `eventBus` singleton. Called exactly once, at process boot (see
+ * app.ts). Idempotent - guards against being accidentally called twice
+ * (e.g. from a test importing app.ts more than once), which would
+ * otherwise double-subscribe the dispatcher and double-deliver every
+ * event.
  */
 export function bootstrapWebhookDelivery(): void {
-  const webhookRepository = new WebhookRepository();
-  const deliveryRepository = new WebhookDeliveryRepository();
-  const worker = new WebhookDeliveryWorker(webhookRepository, deliveryRepository, auditService);
+  if (bootstrapped) return;
+  bootstrapped = true;
 
-  const deliveryQueue = new InMemoryWebhookDeliveryQueue(
-    (deliveryId) => worker.attemptDelivery(deliveryId),
-    deliveryRepository,
-  );
-  deliveryQueue.startRetrySweep();
-
-  const dispatcher = new WebhookDispatcher(webhookRepository, deliveryRepository, deliveryQueue);
-  dispatcher.subscribeTo(eventBus);
+  webhookDeliveryQueue.startRetrySweep();
+  webhookDispatcher.subscribeTo(eventBus);
 }

@@ -41,6 +41,10 @@ export const DEFAULT_PERMISSIONS: Array<{
     description: 'Update, rotate the secret of, enable, or disable a webhook.',
   },
   { key: 'webhook:delete', description: 'Delete a webhook.' },
+  {
+    key: 'webhook:redeliver',
+    description: 'Manually trigger redelivery of a failed or dead-lettered webhook event.',
+  },
 ];
 
 // NOTE: there used to be a DEFAULT_ROLES export here seeding two global

@@ -32,3 +32,9 @@ export const webhookParamsSchema = z.object({
   orgId: objectIdSchema,
   webhookId: objectIdSchema,
 });
+
+export const webhookDeliveryParamsSchema = z.object({
+  orgId: objectIdSchema,
+  webhookId: objectIdSchema,
+  deliveryId: objectIdSchema,
+});

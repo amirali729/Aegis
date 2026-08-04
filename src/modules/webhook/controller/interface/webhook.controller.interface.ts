@@ -1,8 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
 import type {
   DeleteWebhookResult,
+  RedeliverWebhookResult,
   RotateWebhookSecretResult,
   WebhookCreatedResult,
+  WebhookDeliveryListResult,
   WebhookListResult,
   WebhookResult,
 } from '../../types/webhook.types.js';
@@ -15,4 +17,10 @@ export interface IWebhookController {
   enable(req: Request, res: Response, next: NextFunction): Promise<WebhookResult>;
   disable(req: Request, res: Response, next: NextFunction): Promise<WebhookResult>;
   delete(req: Request, res: Response, next: NextFunction): Promise<DeleteWebhookResult>;
+  listDeliveries(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<WebhookDeliveryListResult>;
+  redeliver(req: Request, res: Response, next: NextFunction): Promise<RedeliverWebhookResult>;
 }

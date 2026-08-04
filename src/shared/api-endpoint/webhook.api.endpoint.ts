@@ -6,6 +6,8 @@ const WebhookApiEndpoint = {
   ENABLE: '/organizations/:orgId/webhooks/:webhookId/enable',
   DISABLE: '/organizations/:orgId/webhooks/:webhookId/disable',
   DELETE: '/organizations/:orgId/webhooks/:webhookId',
+  DELIVERY_LIST: '/organizations/:orgId/webhooks/:webhookId/deliveries',
+  DELIVERY_REDELIVER: '/organizations/:orgId/webhooks/:webhookId/deliveries/:deliveryId/redeliver',
 };
 
 export const {
@@ -16,4 +18,6 @@ export const {
   ENABLE: WEBHOOK_ENABLE,
   DISABLE: WEBHOOK_DISABLE,
   DELETE: WEBHOOK_DELETE,
+  DELIVERY_LIST: WEBHOOK_DELIVERY_LIST,
+  DELIVERY_REDELIVER: WEBHOOK_DELIVERY_REDELIVER,
 } = WebhookApiEndpoint;

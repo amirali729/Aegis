@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 
+import { InfrastructureError } from '../../../shared/errors/infrastructure.error.js';
 import { ValidationError } from '../../../shared/errors/validation.error.js';
 import { err, ok } from '../../../shared/result/result.js';
 import { encryptSecret } from '../../../shared/security/encryption/symmetric-encryption.js';
@@ -8,19 +9,25 @@ import type { IAuditLogger } from '../../audit/service/interface/audit-logger.in
 import { OrganizationNotFoundError } from '../../organizations/errors/organization-not-found.error.js';
 import type { CreateWebhookDto } from '../dto/create-webhook.dto.js';
 import type { UpdateWebhookDto } from '../dto/update-webhook.dto.js';
+import { WebhookDeliveryNotFoundError } from '../errors/webhook-delivery-not-found.error.js';
 import { WebhookNotFoundError } from '../errors/webhook-not-found.error.js';
-import { toWebhookResponse } from '../mapper/webhook.mapper.js';
+import { toWebhookDeliveryResponse, toWebhookResponse } from '../mapper/webhook.mapper.js';
+import type { IWebhookDeliveryRepository } from '../repository/interface/webhook-delivery.repository.interface.js';
 import type { IWebhookRepository } from '../repository/interface/webhook.repository.interface.js';
+import { RedeliverWebhookResponse } from '../responses/redeliver-webhook.response.js';
 import { RotateWebhookSecretResponse } from '../responses/rotate-webhook-secret.response.js';
 import { WebhookCreatedResponse } from '../responses/webhook-created.response.js';
 import { validateWebhookUrl } from '../security/url-safety.js';
 import type {
   DeleteWebhookResult,
+  RedeliverWebhookResult,
   RotateWebhookSecretResult,
   WebhookCreatedResult,
+  WebhookDeliveryListResult,
   WebhookListResult,
   WebhookResult,
 } from '../types/webhook.types.js';
+import type { IWebhookDeliveryQueue } from '../worker/webhook-delivery-queue.js';
 import type { IWebhookService } from './interface/webhook.service.interface.js';
 
 /** whsec_ prefix mirrors Stripe's convention - immediately recognizable as a webhook secret, distinct from an API key or client secret. */
@@ -32,6 +39,13 @@ export class WebhookService implements IWebhookService {
   constructor(
     private readonly repository: IWebhookRepository,
     private readonly auditLogger?: IAuditLogger,
+    // Optional so existing call sites/tests that only exercise CRUD (and
+    // never touch delivery history/redelivery) don't have to construct
+    // the whole delivery pipeline just to instantiate this service.
+    // listDeliveries()/redeliver() fail with InfrastructureError if
+    // these were never provided, rather than throwing at construction.
+    private readonly deliveryRepository?: IWebhookDeliveryRepository,
+    private readonly deliveryQueue?: IWebhookDeliveryQueue,
   ) {}
 
   async list(
@@ -301,6 +315,90 @@ export class WebhookService implements IWebhookService {
     );
 
     return ok({ message: 'Webhook deleted successfully.' });
+  }
+
+  async listDeliveries(
+    organizationId: string,
+    webhookId: string,
+    callerTenantId: string | undefined,
+  ): Promise<WebhookDeliveryListResult> {
+    if (!this.belongsToCaller(organizationId, callerTenantId)) {
+      return err(new OrganizationNotFoundError());
+    }
+
+    // Ownership check happens on the WEBHOOK first (same IDOR guard as
+    // every other webhook-scoped operation) - a caller can only ever
+    // list deliveries for a webhook that is actually theirs, regardless
+    // of what deliveryRepository.findByWebhook() itself would return.
+    const existing = await this.findScopedWebhook(organizationId, webhookId);
+    if (!existing.ok) return err(existing.error);
+    if (!existing.value) return err(new WebhookNotFoundError());
+
+    if (!this.deliveryRepository) {
+      return err(new InfrastructureError());
+    }
+
+    const found = await this.deliveryRepository.findByWebhook(webhookId);
+    if (!found.ok) {
+      return err(found.error);
+    }
+
+    return ok(found.value.map(toWebhookDeliveryResponse));
+  }
+
+  async redeliver(
+    organizationId: string,
+    webhookId: string,
+    deliveryId: string,
+    callerTenantId: string | undefined,
+    actorId?: string,
+  ): Promise<RedeliverWebhookResult> {
+    if (!this.belongsToCaller(organizationId, callerTenantId)) {
+      return err(new OrganizationNotFoundError());
+    }
+
+    const existingWebhook = await this.findScopedWebhook(organizationId, webhookId);
+    if (!existingWebhook.ok) return err(existingWebhook.error);
+    if (!existingWebhook.value) return err(new WebhookNotFoundError());
+
+    if (!this.deliveryRepository || !this.deliveryQueue) {
+      return err(new InfrastructureError());
+    }
+
+    const found = await this.deliveryRepository.findById(deliveryId);
+    if (!found.ok) return err(found.error);
+
+    // Second IDOR guard, same pattern as findScopedWebhook: a delivery
+    // id that's valid but belongs to a DIFFERENT webhook (even one in
+    // the same organization) must never be redeliverable through this
+    // webhook's route - deliveries are scoped to the exact webhook they
+    // were addressed to, not just to the organization.
+    if (!found.value || found.value.webhookId.toString() !== webhookId) {
+      return err(new WebhookDeliveryNotFoundError());
+    }
+
+    const reset = await this.deliveryRepository.resetForRedelivery(deliveryId);
+    if (!reset.ok) return err(reset.error);
+    if (!reset.value) return err(new WebhookDeliveryNotFoundError());
+
+    this.deliveryQueue.enqueue(deliveryId);
+
+    void this.auditLogger?.record(
+      new RecordAuditEventDto(
+        'webhook.delivery_redelivered',
+        true,
+        actorId,
+        'user',
+        'webhook',
+        webhookId,
+        undefined,
+        undefined,
+        { deliveryId },
+        organizationId,
+      ),
+    );
+
+    return ok(new RedeliverWebhookResponse(deliveryId, 'pending'));
   }
 
   /**
