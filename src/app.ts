@@ -19,6 +19,8 @@ import organizationRouter from './modules/organizations/routes/organization.rout
 import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
 import sessionRouter from './modules/session/routes/session.routes.js';
+import webhookRouter from './modules/webhook/routes/webhook.routes.js';
+import { bootstrapWebhookDelivery } from './modules/webhook/worker/bootstrap-webhook-delivery.js';
 import healthRouter from './shared/http/health.router.js';
 import swaggerRouter from './shared/openapi/swagger.routes.js';
 
@@ -125,9 +127,17 @@ export function createApp() {
   app.use(discoveryRouter);
   app.use('/api/v1', sessionRouter);
   app.use('/api/v1', auditRouter);
+  app.use('/api/v1', webhookRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
+
+  // Subscribes the Webhook Dispatcher to the Event Bus singleton and
+  // starts the delivery retry sweep - without this call nothing is
+  // actually listening on the bus for webhook delivery, even though the
+  // CRUD routes above and the event-bus import at the top of this file
+  // are both wired up. Idempotent (see bootstrap-webhook-delivery.ts).
+  bootstrapWebhookDelivery();
 
   return app;
 }
