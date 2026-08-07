@@ -8,9 +8,11 @@ import apiKeyRouter from './modules/apikey/routes/api-key.routes.js';
 import applicationRouter from './modules/application/routes/application.routes.js';
 import auditRouter from './modules/audit/routes/audit.routes.js';
 import authRouter from './modules/auth/routes/auth.routes.js';
+import dashboardRouter from './modules/dashboard/routes/dashboard.routes.js';
 import invitationPublicRouter from './modules/invitation/routes/invitation-public.routes.js';
 import invitationRouter from './modules/invitation/routes/invitation.routes.js';
 import membershipRouter from './modules/membership/routes/membership.routes.js';
+import metricsRouter from './modules/metrics/routes/metrics.routes.js';
 import authorizeRouter from './modules/oauth/routes/authorize.routes.js';
 import discoveryRouter from './modules/oauth/routes/discovery.routes.js';
 import oauthClientRouter from './modules/oauth/routes/oauth-client.routes.js';
@@ -19,6 +21,7 @@ import organizationRouter from './modules/organizations/routes/organization.rout
 import permissionRouter from './modules/permission/routes/permission.routes.js';
 import roleRouter from './modules/role/routes/role.routes.js';
 import sessionRouter from './modules/session/routes/session.routes.js';
+import settingsRouter from './modules/settings/routes/settings.routes.js';
 import webhookRouter from './modules/webhook/routes/webhook.routes.js';
 import { bootstrapWebhookDelivery } from './modules/webhook/worker/bootstrap-webhook-delivery.js';
 import healthRouter from './shared/http/health.router.js';
@@ -128,6 +131,9 @@ export function createApp() {
   app.use('/api/v1', sessionRouter);
   app.use('/api/v1', auditRouter);
   app.use('/api/v1', webhookRouter);
+  app.use('/api/v1', settingsRouter);
+  app.use('/api/v1', dashboardRouter);
+  app.use('/api/v1', metricsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
