@@ -40,4 +40,7 @@ export interface IAuthRepository {
    * verification token) and returns the saved document.
    */
   save(user: IUser, options?: { validateBeforeSave?: boolean }): Promise<DataResult<IUser>>;
+
+  /** Permanently removes the user document. Used by account deletion (Settings module). */
+  deleteById(userId: string): Promise<DataResult<boolean>>;
 }

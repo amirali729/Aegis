@@ -27,6 +27,7 @@ import {
   ORGANIZATION_DELETE,
   ORGANIZATION_GET_BY_ID,
   ORGANIZATION_LIST,
+  ORGANIZATION_ME,
   ORGANIZATION_UPDATE,
 } from '../../../shared/api-endpoint/organization.api.endpoint.js';
 
@@ -56,6 +57,14 @@ router.get(
   ORGANIZATION_LIST,
   requirePermission('organization:view'),
   handle(organizationController.list.bind(organizationController), mapOrganizationError),
+);
+
+// Registered before ORGANIZATION_GET_BY_ID: no permission gate beyond
+// authentication - unlike ORGANIZATION_LIST (a platform-operator
+// action), every user is entitled to see their own membership list.
+router.get(
+  ORGANIZATION_ME,
+  handle(organizationController.listMine.bind(organizationController), mapOrganizationError),
 );
 
 router.get(

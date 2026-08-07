@@ -3,13 +3,21 @@ import type { UpdateOrganizationDto } from '../../dto/update-organization.dto.js
 import type {
   DeleteOrganizationResult,
   OrganizationListResult,
+  OrganizationMembershipListResult,
   OrganizationResult,
 } from '../../types/organization.types.js';
 
 export interface IOrganizationService {
   list(): Promise<OrganizationListResult>;
 
-  getById(id: string, callerTenantId: string | undefined): Promise<OrganizationResult>;
+  /** Every organization the given user belongs to, with their org-scoped roles. */
+  listMine(userId: string): Promise<OrganizationMembershipListResult>;
+
+  getById(
+    id: string,
+    callerTenantId: string | undefined,
+    callerId: string,
+  ): Promise<OrganizationResult>;
 
   create(dto: CreateOrganizationDto, actorId?: string): Promise<OrganizationResult>;
 
@@ -17,12 +25,14 @@ export interface IOrganizationService {
     id: string,
     dto: UpdateOrganizationDto,
     callerTenantId: string | undefined,
+    callerId: string,
     actorId?: string,
   ): Promise<OrganizationResult>;
 
   delete(
     id: string,
     callerTenantId: string | undefined,
+    callerId: string,
     actorId?: string,
   ): Promise<DeleteOrganizationResult>;
 }

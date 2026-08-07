@@ -15,6 +15,10 @@
 // } = TenantApiEndpoint;
 const OrganizationApiEndpoint = {
   LIST: '/organizations',
+  // Must be registered before GET_BY_ID (/organizations/:id) in the
+  // router - otherwise Express would match "me" as the :id param and
+  // this route would never be reached.
+  ME: '/organizations/me',
   GET_BY_ID: '/organizations/:id',
   CREATE: '/organizations',
   UPDATE: '/organizations/:id',
@@ -23,6 +27,7 @@ const OrganizationApiEndpoint = {
 
 export const {
   LIST: ORGANIZATION_LIST,
+  ME: ORGANIZATION_ME,
   GET_BY_ID: ORGANIZATION_GET_BY_ID,
   CREATE: ORGANIZATION_CREATE,
   UPDATE: ORGANIZATION_UPDATE,

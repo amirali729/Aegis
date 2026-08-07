@@ -43,6 +43,18 @@ export interface IUser extends Document {
    */
   failedLoginAttempts: number;
   lockUntil?: Date;
+  /**
+   * Self-service account deactivation (Settings module). A deactivated
+   * account is NOT deleted and can still authenticate - deactivation is
+   * a soft, reversible "pause" (hides the account from other members,
+   * lets the Settings UI show a reactivate action) rather than an
+   * access lock. Nothing in the auth/session flow currently rejects a
+   * deactivated user; enforcing that is a deliberate follow-up once the
+   * product decides what a deactivated account should and shouldn't be
+   * able to do.
+   */
+  status: 'active' | 'deactivated';
+  deactivatedAt?: Date;
   readonly createdAt: Date;
   readonly updatedAt: Date;
   isPasswordCorrect(password: string): Promise<boolean>;
@@ -141,6 +153,12 @@ const userSchema: Schema = new mongoose.Schema(
       default: 0,
     },
     lockUntil: Date,
+    status: {
+      type: String,
+      enum: ['active', 'deactivated'],
+      default: 'active',
+    },
+    deactivatedAt: Date,
   },
   { timestamps: true },
 );

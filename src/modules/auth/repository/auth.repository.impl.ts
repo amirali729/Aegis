@@ -105,4 +105,14 @@ export class AuthRepository implements IAuthRepository {
       return err(new InfrastructureError());
     }
   }
+
+  async deleteById(userId: string): Promise<DataResult<boolean>> {
+    try {
+      const result = await User.findByIdAndDelete(userId);
+      return ok(!!result);
+    } catch (error) {
+      console.error(error);
+      return err(new InfrastructureError());
+    }
+  }
 }

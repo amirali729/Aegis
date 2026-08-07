@@ -20,6 +20,18 @@ export class MembershipRepository implements IMembershipRepository {
     }
   }
 
+  async findByUser(userId: string): Promise<DataResult<IMembership[]>> {
+    try {
+      const memberships = await Membership.find({ userId })
+        .populate('organizationId')
+        .populate('roleIds', 'name description')
+        .sort({ joinedAt: 1 });
+      return ok(memberships);
+    } catch {
+      return err(new InfrastructureError());
+    }
+  }
+
   async findOne(organizationId: string, userId: string): Promise<DataResult<IMembership | null>> {
     try {
       const membership = await Membership.findOne({ organizationId, userId }).populate('userId');
@@ -66,6 +78,15 @@ export class MembershipRepository implements IMembershipRepository {
     try {
       const result = await Membership.findOneAndDelete({ organizationId, userId });
       return ok(!!result);
+    } catch {
+      return err(new InfrastructureError());
+    }
+  }
+
+  async deleteAllForUser(userId: string): Promise<DataResult<number>> {
+    try {
+      const result = await Membership.deleteMany({ userId });
+      return ok(result.deletedCount ?? 0);
     } catch {
       return err(new InfrastructureError());
     }

@@ -13,11 +13,14 @@ import type {
   DeleteOrganizationResult,
   OrganizationError,
   OrganizationListResult,
+  OrganizationMembershipListResult,
   OrganizationResult,
 } from '../types/organization.types.js';
 import type { IOrganizationService } from './interface/organization.service.interface.js';
 import { toOrganizationResponse } from './organization-mapper.js';
+import { toOrganizationMembershipResponse } from './organization-membership-mapper.js';
 
+import { callerBelongsToOrganization } from '../../../shared/security/authorization/organization-access.js';
 import { createDomainEvent } from '../../../shared/events/domain-event.js';
 import { DOMAIN_EVENTS } from '../../../shared/events/domain-events.js';
 import { eventBus } from '../../../shared/events/event-bus.js';
@@ -60,8 +63,17 @@ export class OrganizationService implements IOrganizationService {
     private readonly auditLogger?: IAuditLogger,
   ) {}
 
-  private belongsToCaller(organizationId: string, callerTenantId: string | undefined): boolean {
-    return callerTenantId === undefined || callerTenantId === organizationId;
+  private async belongsToCaller(
+    organizationId: string,
+    callerTenantId: string | undefined,
+    callerId: string,
+  ): Promise<boolean> {
+    return callerBelongsToOrganization(organizationId, callerTenantId, callerId, {
+      // Organizations is one of the two modules (with Users) the Roles
+      // & Permissions doc explicitly grants Platform Owner/Admin/
+      // Support cross-organization access to.
+      allowPlatformOperator: true,
+    });
   }
 
   async list(): Promise<OrganizationListResult> {
@@ -74,8 +86,22 @@ export class OrganizationService implements IOrganizationService {
     return ok(found.value.map(toOrganizationResponse));
   }
 
-  async getById(id: string, callerTenantId: string | undefined): Promise<OrganizationResult> {
-    if (!this.belongsToCaller(id, callerTenantId)) {
+  async listMine(userId: string): Promise<OrganizationMembershipListResult> {
+    const found = await this.membershipRepository.findByUser(userId);
+
+    if (!found.ok) {
+      return err(found.error);
+    }
+
+    return ok(found.value.map(toOrganizationMembershipResponse));
+  }
+
+  async getById(
+    id: string,
+    callerTenantId: string | undefined,
+    callerId: string,
+  ): Promise<OrganizationResult> {
+    if (!(await this.belongsToCaller(id, callerTenantId, callerId))) {
       return err(new OrganizationNotFoundError());
     }
 
@@ -276,9 +302,10 @@ export class OrganizationService implements IOrganizationService {
     id: string,
     dto: UpdateOrganizationDto,
     callerTenantId: string | undefined,
+    callerId: string,
     actorId?: string,
   ): Promise<OrganizationResult> {
-    if (!this.belongsToCaller(id, callerTenantId)) {
+    if (!(await this.belongsToCaller(id, callerTenantId, callerId))) {
       return err(new OrganizationNotFoundError());
     }
 
@@ -331,9 +358,10 @@ export class OrganizationService implements IOrganizationService {
   async delete(
     id: string,
     callerTenantId: string | undefined,
+    callerId: string,
     actorId?: string,
   ): Promise<DeleteOrganizationResult> {
-    if (!this.belongsToCaller(id, callerTenantId)) {
+    if (!(await this.belongsToCaller(id, callerTenantId, callerId))) {
       return err(new OrganizationNotFoundError());
     }
 

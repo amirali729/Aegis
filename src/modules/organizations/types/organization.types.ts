@@ -3,6 +3,7 @@ import type { ValidationError } from '../../../shared/errors/validation.error.js
 import type { Result } from '../../../shared/result/result.js';
 import type { OrganizationNotFoundError } from '../errors/organization-not-found.error.js';
 import type { OrganizationSlugTakenError } from '../errors/organization-slug-taken.error.js';
+import type { OrganizationMembershipResponse } from '../responses/organization-membership-response.js';
 import type { OrganizationResponse } from '../responses/organization-response.js';
 
 export type OrganizationError =
@@ -11,5 +12,10 @@ export type OrganizationError =
 export type OrganizationResult = Result<OrganizationResponse, OrganizationError>;
 
 export type OrganizationListResult = Result<OrganizationResponse[], OrganizationError>;
+
+export type OrganizationMembershipListResult = Result<
+  OrganizationMembershipResponse[],
+  OrganizationError
+>;
 
 export type DeleteOrganizationResult = Result<{ message: string }, OrganizationError>;

@@ -5,6 +5,7 @@ import type { IOrganizationService } from '../service/interface/organization.ser
 import type {
   DeleteOrganizationResult,
   OrganizationListResult,
+  OrganizationMembershipListResult,
   OrganizationResult,
 } from '../types/organization.types.js';
 import type { IOrganizationController } from './interface/organization.controller.interface.js';
@@ -16,8 +17,16 @@ export class OrganizationController implements IOrganizationController {
     return this.service.list();
   }
 
+  async listMine(
+    req: Request,
+    _res: Response,
+    _next: NextFunction,
+  ): Promise<OrganizationMembershipListResult> {
+    return this.service.listMine(req.user._id.toString());
+  }
+
   async getById(req: Request, _res: Response, _next: NextFunction): Promise<OrganizationResult> {
-    return this.service.getById(req.params.id as string, req.tenantId);
+    return this.service.getById(req.params.id as string, req.tenantId, req.user._id.toString());
   }
 
   async create(req: Request, _res: Response, _next: NextFunction): Promise<OrganizationResult> {
@@ -33,6 +42,7 @@ export class OrganizationController implements IOrganizationController {
       req.params.id as string,
       dto,
       req.tenantId,
+      req.user._id.toString(),
       req.user?._id?.toString(),
     );
   }
@@ -42,6 +52,11 @@ export class OrganizationController implements IOrganizationController {
     _res: Response,
     _next: NextFunction,
   ): Promise<DeleteOrganizationResult> {
-    return this.service.delete(req.params.id as string, req.tenantId, req.user?._id?.toString());
+    return this.service.delete(
+      req.params.id as string,
+      req.tenantId,
+      req.user._id.toString(),
+      req.user?._id?.toString(),
+    );
   }
 }

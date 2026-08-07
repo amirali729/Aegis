@@ -9,6 +9,14 @@ export interface IMembershipRepository {
   /** Returns memberships with `userId` populated to IUser docs. */
   findByOrganization(organizationId: string): Promise<DataResult<IMembership[]>>;
 
+  /**
+   * Every membership a user holds, across all organizations. Returns
+   * memberships with `organizationId` populated to IOrganization docs
+   * and `roleIds` populated to IRole docs (name/description only) -
+   * used by GET /organizations/me and the Dashboard overview.
+   */
+  findByUser(userId: string): Promise<DataResult<IMembership[]>>;
+
   findOne(organizationId: string, userId: string): Promise<DataResult<IMembership | null>>;
 
   create(
@@ -25,6 +33,9 @@ export interface IMembershipRepository {
   ): Promise<DataResult<IMembership | null>>;
 
   delete(organizationId: string, userId: string): Promise<DataResult<boolean>>;
+
+  /** Removes every membership a user holds, across all organizations. Used by account deletion (Settings module). */
+  deleteAllForUser(userId: string): Promise<DataResult<number>>;
 
   /**
    * Grants an organization-scoped Role to this membership. Idempotent -
